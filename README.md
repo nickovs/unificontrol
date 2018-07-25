@@ -6,6 +6,13 @@ include:
 * A clean interface that supports introspection and self-documentation.
 * Proper handling of SSL connections to allow secure access to the controller even if it uses a self-signed certificate.
 * A concise, readable internal representation of the Unifi API so that new API calls can easily be added as new features are added to the controller.
+* Python 3 only, since it's the way of the future.
+
+## Installation
+
+```
+pip install -e git+https://github.com/nickovs/unificontrol.git@master#egg=unificontrol
+```
 
 ## Usage
 

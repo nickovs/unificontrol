@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="unificontrol",
-    version="0.1.0",
+    version="0.0.1",
     author="Nicko van Someren",
     author_email="nicko@nicko.org",
     description="Secure access to Unifi network controllers",
@@ -19,4 +19,7 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ),
+    install_requires=['requests'],
+    python_requires='>=3.4',
+    keywords=['unifi', 'wifi', 'network', 'mamangement'],
 )
