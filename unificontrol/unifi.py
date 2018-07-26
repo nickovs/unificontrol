@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# pylint: disable=too-many-lines
+
 # Copyright 2018 Nicko van Someren
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,210 +18,41 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+"""Implementation of the Unifi controller API client"""
+
+
 # Standard libraries
-from inspect import signature, Signature, Parameter
-from functools import wraps
 import ssl
 import tempfile
 import atexit
+import os
 
 # Dependencies
 import requests
 
-POSITIONAL_ONLY = Parameter.POSITIONAL_ONLY
-POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD
-KEYWORD_ONLY = Parameter.KEYWORD_ONLY
-
-# An heirarchy of exceptions for our error conditions.
-class UnifiError(Exception):
-    pass
-
-class UnifiAPIError(UnifiError):
-    pass
-
-class UnifiTransportError(UnifiError):
-    pass
-
-class UnifiLoginError(UnifiError):
-    pass
-
-# This metaclass renames any method of a class that currently have a
-# __name__ attribute of META_RENAME to instead have a function
-# introspection name to match the attribute name
-
-META_RENAME = "__TO_BE_RENAMED_LATER__"
-
-class MetaNameFixer(type):
-    def __init__(cls, name, bases, dct):
-        for attr_name in dct:
-            attr = dct[attr_name]
-            if getattr(attr, "__name__", None) == META_RENAME:
-                attr.__name__ = attr_name
-        super(MetaNameFixer, cls).__init__(name, bases, dct)
-
-# These are classes who's instances represent API calls to the Unifi controller
-
-class _UnifiAPICall:
-    def __init__(self, doc, endpoint,
-                 path_arg_name=None, path_arg_optional=True,
-                 json_args=None, json_body_name=None, json_fix=[],
-                 rest_command=None, method=None,
-                 need_login=True):
-        self._endpoint = endpoint
-        self._path_arg_name = path_arg_name
-        self._json_args = json_args
-        self._json_body_name = json_body_name
-        self._rest = rest_command
-        self._need_login = need_login
-        if not isinstance(json_fix, (list, tuple)):
-            json_fix = [json_fix]
-        self._fixes = json_fix
-        self.__doc__ = doc
-
-        args = [Parameter('self', POSITIONAL_ONLY)]
-        if path_arg_name:
-            args.append(Parameter(path_arg_name, POSITIONAL_ONLY,
-                                  default = None if path_arg_optional else Parameter.empty))
-        if json_args:
-            for arg_name in json_args:
-                if isinstance(arg_name, tuple):
-                    arg_name, default = arg_name
-                else:
-                    default = Parameter.empty
-                args.append(Parameter(arg_name, KEYWORD_ONLY, default=default))
-        if json_body_name:
-            args.append(Parameter(json_body_name,
-                                  KEYWORD_ONLY if path_arg_optional else POSITIONAL_OR_KEYWORD,
-                                  default=None))
-
-        self._sig = Signature(args)
-        if method == None:
-            if json_args or json_body_name or rest_command:
-                method = "POST"
-            else:
-                method = "GET"
-
-        self._method = method
-
-    def _build_url(self, client, path_arg):
-        return "https://{host}:{port}/api/s/{site}/{endpoint}{path}".format(
-            host=client.host, port=client.port, site=client.site,
-            endpoint=self._endpoint,
-            path = "/" + path_arg if path_arg else "")
-
-    def __call__(self, *args, **kwargs):
-        bound = self._sig.bind(*args, **kwargs)
-        bound.apply_defaults()
-        # The first parameter is the 'self' of the API class to which it is attached
-        client = bound.arguments["self"]
-        path_arg = bound.arguments[self._path_arg_name] if self._path_arg_name else None
-        rest_dict = bound.arguments[self._json_body_name] if self._json_body_name else {}
-        if self._rest:
-            rest_dict["cmd"] = self._rest
-        if self._json_args:
-            for arg_name in self._json_args:
-                if isinstance(arg_name, tuple):
-                    arg_name, _ = arg_name
-                if arg_name not in bound.arguments:
-                    raise TypeError("Argument {} is required".format(arg_name))
-                if bound.arguments[arg_name]:
-                    rest_dict[arg_name] = bound.arguments[arg_name]
-        for fix in self._fixes:
-            rest_dict = fix(rest_dict)
-        url = self._build_url(client, path_arg)
-        return client._execute(url, self._method, rest_dict, need_login=self._need_login)
-
-class _UnifiAPICallNoSite(_UnifiAPICall):
-    def _build_url(self, client, path_arg):
-        return "https://{host}:{port}/api/{endpoint}{path}".format(
-            host = client.host, port = client.port,
-            endpoint = self._endpoint,
-            path =  "/" + path_arg if path_arg else "")
-
-# We want to have proper introspection and documentation for our
-# methods but for some reason we you can't set a __signature__
-# directly on a bound method. Instead we wrap it up and fix the
-# signature on the wrapper.
-
-def _make_wrapper(cls, *args, **kwargs):
-    instance = cls(*args, **kwargs)
-    def wrapper(client, *a, **kw):
-        return instance(client, *a, **kw)
-    wrapper.__name__ = META_RENAME
-    wrapper.__doc__ = instance.__doc__
-    wrapper.__signature__ = instance._sig
-    return wrapper
-
-def UnifiAPICall(*args, **kwargs):
-    return _make_wrapper(_UnifiAPICall, *args, **kwargs)
-
-def UnifiAPICallNoSite(*args, **kwargs):
-    return _make_wrapper(_UnifiAPICallNoSite, *args, **kwargs)
-
-
-# Functions here are fixers to fix up JSON objects before posting to
-# the controller. This allows us to have cleaner function signatures
-# when the underlying API is a bit verbose.
-
-# Ensure messages with notes have the 'noted' flag set
-def note_noted_fixer(d):
-    if 'note' in d:
-        if d['note']:
-            d['noted'] = True
-        else:
-            del d['note']
-    return d
-
-# Arguments for user creation sit deeper in the JSON structure.
-def user_object_nesting(d):
-    return {"objects": [{"data":d}]}
-
-# Convert a single mac into a list as necessary
-def listify_macs(d):
-    if 'macs' in d and isinstance(d['macs'], str):
-        d['macs'] = [d['macs']]
-    return d
-
-# Functions to fix start and end times
-def fix_start_now(d):
-    if 'start' not in d or d['start'] == None:
-        d['start'] = int(time.time())
-    return d
-
-def _fix_end_delta(d, delta):
-    if 'end' not in d or d['end'] == None:
-        d['end'] = d['start'] + delta
-    return d
-
-def fix_end_12hours(d):
-    return _fix_end_delta(d, 12 * 3600)
-
-def fix_end_7days(d):
-    return _fix_end_delta(d, 7 * 24 * 3600)
-
-def fix_end_1year(d):
-    return _fix_end_delta(d, 365 * 24 * 3600)
-
-# Ensure that requested attributes include the 'time' attribute
-def fix_ensure_time_attrib(d):
-    if 'attrs' not in d:
-        d['attrs'] = []
-    if 'time' not in d['attrs']:
-        d['attrs'].append('time')
-    return d
+from .exceptions import UnifiAPIError, UnifiTransportError, UnifiLoginError
+from .metaprogram import UnifiAPICall, UnifiAPICallNoSite, MetaNameFixer
+from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list,
+                          fix_end_now, fix_start_12hours, fix_start_7days, fix_start_1year,
+                          fix_ensure_time_attrib, fix_constants, fix_arg_names,
+                          fix_enforce_values, fix_locate_ap_cmd, fix_check_email,
+                          fix_admin_permissions)
 
 CACHE_CERT = "CACHE_CERT"
 
 # Default lists of stats to return for various stat calls
-_default_site_attributes = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes', 'wlan_bytes', 'num_sta', 'lan-num_sta', 'wlan-num_sta', 'time']
+_DEFAULT_SITE_ATTRIBUTES = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes',
+                            'wlan_bytes', 'num_sta', 'lan-num_sta',
+                            'wlan-num_sta', 'time']
 
-_default_ap_attributes = ['bytes', 'num_sta', 'time']
+_DEFAULT_AP_ATTRIBUTES = ['bytes', 'num_sta', 'time']
 
-_default_user_attributes = ['time', 'rx_bytes', 'tx_bytes']
+_DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
 # The main Unifi client object
 
 class UnifiClient(metaclass=MetaNameFixer):
+    # pylint: disable=too-many-instance-attributes, too-many-arguments
     """An abstract interface to the Unifi controller"""
 
     def __init__(self, host="localhost", port=8443,
@@ -235,7 +68,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         self._exit_handler = None
 
         if ssl_verify == CACHE_CERT:
-            self.cache_server_cert()
+            self._cache_server_cert()
 
     def _exit(self):
         if self._verify:
@@ -247,7 +80,7 @@ class UnifiClient(metaclass=MetaNameFixer):
             os.remove(self._verify)
             atexit.unregister(self._exit_handler)
 
-    def cache_server_cert(self):
+    def _cache_server_cert(self):
         cert = ssl.get_server_certificate((self._host, self._port))
         if cert:
             cert_file = tempfile.NamedTemporaryFile(mode="w+", suffix=".pem", delete=False)
@@ -257,16 +90,16 @@ class UnifiClient(metaclass=MetaNameFixer):
             self._verify = cert_name
             self._exit_handler = atexit.register(self._exit)
         else:
-            raise Error("Failed to fetch SSL certificate")
+            raise Exception("Failed to fetch SSL certificate")
 
     def _execute(self, url, method, rest_dict, need_login=True):
         request = requests.Request(method, url, json=rest_dict)
         ses = self._session
 
-        r = ses.send(ses.prepare_request(request), verify=self._verify)
+        resp = ses.send(ses.prepare_request(request), verify=self._verify)
 
         # If we fail with unauthorised and need login then retry just once
-        if r.status_code == 401 and need_login:
+        if resp.status_code == 401 and need_login:
             try:
                 self.login()
             except UnifiTransportError:
@@ -274,26 +107,29 @@ class UnifiClient(metaclass=MetaNameFixer):
                     raise UnifiLoginError("Invalid credentials")
                 else:
                     raise UnifiLoginError("Need user name and password to log in")
-            r = ses.send(ses.prepare_request(request), verify=self._verify)
+            resp = ses.send(ses.prepare_request(request), verify=self._verify)
 
-        if r.ok:
-            response = r.json()
+        if resp.ok:
+            response = resp.json()
             if 'meta' in response and response['meta']['rc'] != 'ok':
                 raise UnifiAPIError(response['meta']['msg'])
             return response['data']
         else:
-            raise UnifiTransportError("{}: {}".format(r.status_code, r.reason))
+            raise UnifiTransportError("{}: {}".format(resp.status_code, resp.reason))
 
     @property
     def host(self):
+        """Host name of contoller"""
         return self._host
 
     @property
     def port(self):
+        """Port for accessing controller"""
         return self._port
 
     @property
     def site(self):
+        """Identifier of site being managed"""
         return self._site
 
     @site.setter
@@ -324,70 +160,70 @@ class UnifiClient(metaclass=MetaNameFixer):
     authorize_guest = UnifiAPICall(
         "Authorize a client device",
         "cmd/stamgr",
-        rest_command = "authorize-guest",
-        json_args = ["mac",
-                     "minutes",
-                     ("up", None),
-                     ("down", None),
-                     ("MBytes", None),
-                     ("ap_mac", None) ] )
+        rest_command="authorize-guest",
+        json_args=["mac",
+                   "minutes",
+                   ("up", None),
+                   ("down", None),
+                   ("MBytes", None),
+                   ("ap_mac", None)])
 
     unauthorize_guest = UnifiAPICall(
         "Unauthorize a client device",
         "cmd/stamgr",
-        rest_command = "unauthorize-guest",
-        json_args = ["mac"] )
+        rest_command="unauthorize-guest",
+        json_args=["mac"])
 
     reconnect_client = UnifiAPICall(
         "Force reconnection of a client device",
         "cmd/stamgr",
-        rest_command = "kick-sta",
-        json_args = ["mac"] )
+        rest_command="kick-sta",
+        json_args=["mac"])
 
     block_client = UnifiAPICall(
         "Block a client device",
         "cmd/stamgr",
-        rest_command = "block-sta",
-        json_args = ["mac"] )
+        rest_command="block-sta",
+        json_args=["mac"])
 
     unblock_client = UnifiAPICall(
         "Unblock a client device",
         "cmd/stamgr",
-        rest_command = "unblock-sta",
-        json_args = ["mac"] )
+        rest_command="unblock-sta",
+        json_args=["mac"])
 
     forget_client = UnifiAPICall(
         "Forget a client device",
         "cmd/stamgr",
-        rest_command = "forget-sta",
-        json_args = ["macs"],
-        json_fix = [listify_macs] )
+        rest_command="forget-sta",
+        json_args=["macs"],
+        json_fix=[fix_macs_list])
 
     create_client = UnifiAPICall(
         "Creat a new user/client device",
         "group/user",
-        json_args = ["mac",
-                     "usergroup_id",
-                     ("name", None),
-                     ("note", None)],
-        json_fix = [note_noted_fixer, user_object_nesting] )
+        json_args=["mac",
+                   "usergroup_id",
+                   ("name", None),
+                   ("note", None)],
+        json_fix=[fix_note_noted, fix_user_object_nesting])
 
     set_client_note = UnifiAPICall(
         "Add, modify or remove a note on a client device",
         "upd/user",
-        path_arg_name = "user_id",
-        path_arg_optional = False,
-        json_args = ["note"],
-        json_fix = [note_noted_fixer],
-        method="PUT" )
+        path_arg_name="user_id",
+        path_arg_optional=False,
+        json_args=["note"],
+        json_fix=[fix_note_noted],
+        method="PUT")
 
     set_client_name = UnifiAPICall(
         "Add, modify or remove a name on a client device",
         "upd/user",
-        path_arg_name = "user_id",
-        path_arg_optional = False,
-        json_args = ["name"],
-        method="PUT" )
+        path_arg_name="user_id",
+        path_arg_optional=False,
+        json_args=["name"],
+        method="PUT")
 
     # Functions for retreiving statistics
 
@@ -396,10 +232,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/report/5minutes.site",
         json_args=[('start', None),
                    ('end', None),
-                   ('attrs', _default_site_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_12hours,
-                    fix_ensure_time_attrib],
+                   ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_12hours,
+                  fix_ensure_time_attrib],
         )
 
     stat_hourly_site = UnifiAPICall(
@@ -407,10 +243,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/report/hourly.site",
         json_args=[('start', None),
                    ('end', None),
-                   ('attrs', _default_site_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_7days,
-                    fix_ensure_time_attrib],
+                   ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_7days,
+                  fix_ensure_time_attrib],
         )
 
     stat_daily_site = UnifiAPICall(
@@ -418,10 +254,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/report/daily.site",
         json_args=[('start', None),
                    ('end', None),
-                   ('attrs', _default_site_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_1year,
-                    fix_ensure_time_attrib],
+                   ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_1year,
+                  fix_ensure_time_attrib],
     )
 
     stat_5minutes_aps = UnifiAPICall(
@@ -430,11 +266,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_ap_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_12hours,
-                    fix_ensure_time_attrib],
-    )
+                   ('attrs', _DEFAULT_AP_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_12hours,
+                  fix_ensure_time_attrib],
+        )
 
     stat_hourly_aps = UnifiAPICall(
         "Hourly stats method for a single access point or all access points",
@@ -442,11 +278,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_ap_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_7days,
-                    fix_ensure_time_attrib],
-    )
+                   ('attrs', _DEFAULT_AP_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_7days,
+                  fix_ensure_time_attrib],
+        )
 
     stat_daily_aps = UnifiAPICall(
         "Daily stats method for a single access point or all access points",
@@ -454,11 +290,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_ap_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_1year,
-                    fix_ensure_time_attrib],
-     )
+                   ('attrs', _DEFAULT_AP_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_1year,
+                  fix_ensure_time_attrib],
+        )
 
     stat_5minutes_user = UnifiAPICall(
         "5 minutes stats method for a single user/client device",
@@ -466,10 +302,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_user_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_12hours,
-                    fix_ensure_time_attrib],
+                   ('attrs', _DEFAULT_USER_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_12hours,
+                  fix_ensure_time_attrib],
     )
 
     stat_hourly_user = UnifiAPICall(
@@ -478,10 +314,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_user_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_7days,
-                    fix_ensure_time_attrib],
+                   ('attrs', _DEFAULT_USER_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_7days,
+                  fix_ensure_time_attrib],
     )
 
     stat_daily_user = UnifiAPICall(
@@ -490,11 +326,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=[('start', None),
                    ('end', None),
                    ('mac', None),
-                   ('attrs', _default_user_attributes)],
-        json_fix = [fix_start_now,
-                    fix_end_1year,
-                    fix_ensure_time_attrib],
-    )
+                   ('attrs', _DEFAULT_USER_ATTRIBUTES)],
+        json_fix=[fix_end_now,
+                  fix_start_1year,
+                  fix_ensure_time_attrib],
+        )
 
     stat_sessions = UnifiAPICall(
         "Show all login sessions",
@@ -503,60 +339,65 @@ class UnifiClient(metaclass=MetaNameFixer):
                    ('end', None),
                    ('mac', None),
                    ('type', 'all')],
-        json_fix = [fix_start_now,
-                    fix_end_7days],
-    )
+        json_fix=[fix_end_now,
+                  fix_start_7days],
+        )
 
     stat_sta_sessions_latest = UnifiAPICall(
         "Show latest 'n' login sessions for a single client device",
         "stat/session",
         json_args=['mac',
-                   ('_limit', 5),
-                   ('_sort', '-assoc_time')],
-    )
+                   ('limit', 5)],
+        json_fix=[fix_constants({'_sort': '-assoc_time'}),
+                  fix_arg_names({'limit': '_limit'})],
+        )
 
     stat_auths = UnifiAPICall(
         "Show all authorizations",
         "stat/authorization",
         json_args=[('start', None),
                    ('end', None)],
-        json_fix = [fix_start_now,
-                    fix_end_7days],
-    )
+        json_fix=[fix_end_now,
+                  fix_start_7days],
+        )
 
     list_allusers = UnifiAPICall(
         "List all client devices ever connected to the site",
         "stat/alluser",
-        json_args = [('type', 'all'),
-                     ('conn', 'all'),
-                     ('within', 8760) ] )
+        json_args=[('type', 'all'),
+                   ('conn', 'all'),
+                   ('within', 8760)],
+        )
 
     list_guests = UnifiAPICall(
         "List guest devices",
         "stat/guest",
-        json_args = [('within', 8760) ] )
+        json_args=[('within', 8760)],
+        )
 
     list_clients = UnifiAPICall(
         "List currently connected client devices, or details on a single MAC address",
         "stat/sta",
-        path_arg_name="client_mac")
+        path_arg_name="client_mac",
+        )
 
     get_client_details = UnifiAPICall(
         "Get details about a client",
         "stat/user",
         path_arg_name="client_mac",
-        path_arg_optional=False)
+        path_arg_optional=False,
+        )
 
     list_usergroups = UnifiAPICall(
         "List user groups",
         "list/usergroup")
 
-    set_usergroup =  UnifiAPICall(
+    set_usergroup = UnifiAPICall(
         "Set the user group for a client",
         "upd/user",
         path_arg_name="client_mac",
         path_arg_optional=False,
-        json_args = ['usergroup_id'],
+        json_args=['usergroup_id'],
         method="PUT")
 
     ### FIX ME: Does the JSON in this call need the group_id as _id as
@@ -590,12 +431,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         method="DELETE",
     )
 
-    list_health =  UnifiAPICall(
+    list_health = UnifiAPICall(
         "List health metrics",
         "stat/health")
 
     #### Should probably support '?scale=5minutes'
-    list_dashboard =  UnifiAPICall(
+    list_dashboard = UnifiAPICall(
         "List dashboard metrics",
         "stat/dashboard")
 
@@ -615,7 +456,7 @@ class UnifiClient(metaclass=MetaNameFixer):
     list_rogueaps = UnifiAPICall(
         "List rogue or nearby APs",
         "stat/rogueap",
-        json_args = [('within', 24)] )
+        json_args=[('within', 24)])
 
     list_rogueknown = UnifiAPICall(
         "List rogue or nearby APs",
@@ -721,65 +562,19 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/admin",
     )
 
-    # invite_admin
-    # Invite a new admin for access to the current site
-    #
-    # returns true on success
-    # required parameter <name>           = string, name to assign to the new admin user
-    # required parameter <email>          = email address to assign to the new admin user
-    # optional parameter <enable_sso>     = boolean, whether or not SSO will be allowed for the new admin
-    # default value is true which enables the SSO capability
-    # optional parameter <readonly>       = boolean, whether or not the new admin will have readonly
-    # permissions, default value is true which gives the new admin
-    # administrator permissions
-    # optional parameter <device_adopt>   = boolean, whether or not the new admin will have permissions to
-    # adopt devices, default value is false. Only applies when readonly
-    # is true.
-    # optional parameter <device_restart> = boolean, whether or not the new admin will have permissions to
-    # restart devices, default value is false. Only applies when readonly
-    # is true.
-    #
-    # NOTES:
-    # - after issuing a valid request, an invite will be sent to the email address provided
-    # - issuing this command against an existing admin will trigger a "re-invite"
-    #
-    #
-    #
-    # invite_admin(($name, $email, $enable_sso = true, $readonly = false, $device_adopt = false, $device_restart = false))
-    #
-    #         if (!$this->is_loggedin) return false;
-    #         $email_valid = filter_var(trim($email), FILTER_VALIDATE_EMAIL);
-    #         if (!$email_valid) {
-    #             trigger_error('The email address provided is invalid!');
-    #             return false;
-    #         }
-    #
-    #         $json = ['name' => trim($name), 'email' => trim($email), 'for_sso' => $enable_sso, 'cmd' => 'invite-admin'];
-    #         if ($readonly) {
-    #             $json['role'] = 'readonly';
-    #             $permissions = [];
-    #             if ($device_adopt) {
-    #                 $permissions[] = "API_DEVICE_ADOPT";
-    #             }
-    #
-    #             if ($device_restart) {
-    #                 $permissions[] = "API_DEVICE_RESTART";
-    #             }
-    #
-    #             if (count($permissions) > 0) {
-    #                 $json['permissions'] = $permissions;
-    #             }
-    #         }
-    #
-    #         $json     = json_encode($json);
-    #         $response = $this->exec_curl('/api/s/'.$this->site.'/cmd/sitemgr', 'json='.$json);
-    #         return $this->process_response_boolean($response);
-    #
-
     invite_admin = UnifiAPICall(
         "Invite a new admin for access to the current site",
         "cmd/sitemgr",
-        json_args=[],
+        json_args=['name',
+                   'email',
+                   ('readonly', False),
+                   ('enable_sso', True),
+                   ('device_adopt', False),
+                   ('device_restart', False)],
+        rest_command='invite-admin',
+        json_fix=[fix_arg_names({'enable_sso':'for_sso'}),
+                  fix_admin_permissions,
+                  fix_check_email('email')],
     )
 
     revoke_admin = UnifiAPICall(
@@ -827,7 +622,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=['name',
                    'x_password',
                    'nate'],
-        json_fix = [note_noted_fixer],
+        json_fix=[fix_note_noted],
     )
 
     list_hotspotop = UnifiAPICall(
@@ -847,20 +642,20 @@ class UnifiClient(metaclass=MetaNameFixer):
                    ('MBytes', None)],
     )
 
-    #### FIX ME: This needs a way to rename ID arguments
     revoke_voucher = UnifiAPICall(
         "Revoke voucher",
         "cmd/hotspot",
         rest_command="delete-voucher",
-        json_args=['_id'],
+        json_args=['voucher_id'],
+        json_fix=[fix_arg_names({'voucher_id':"_id"})],
     )
 
-    #### FIX ME: This needs a way to rename ID arguments
     extend_guest_validity = UnifiAPICall(
         "Extend guest validity",
         "cmd/hotspot",
         rest_command="extend",
-        json_args=['_id'],
+        json_args=['guest_id'],
+        json_fix=[fix_arg_names({'guest_id':"_id"})],
     )
 
     list_portforward_stats = UnifiAPICall(
@@ -931,44 +726,21 @@ class UnifiClient(metaclass=MetaNameFixer):
         method="PUT",
     )
 
-    #### FIX ME: Need do document values ['off', 'on', 'default']
     led_override = UnifiAPICall(
         "Override LED mode for a device (using REST)",
         "rest/device",
         path_arg_name="device_id",
         path_arg_optional=False,
         json_args=['led_override'],
+        json_fix=[fix_enforce_values({"led_override": ['off', 'on', 'default']})],
         method="PUT",
     )
-
-
-    # locate_ap
-    # Toggle flashing LED of an access point for locating purposes
-    #
-    # return true on success
-    # required parameter <mac>    = device MAC address
-    # required parameter <enable> = boolean; true will enable flashing LED, false will disable
-    #
-    # NOTES:
-    # replaces the old set_locate_ap() and unset_locate_ap() methods/functions
-    #
-    #
-    #
-    # locate_ap(($mac, $enable))
-    #
-    #         if (!$this->is_loggedin) return false;
-    #         $mac      = strtolower($mac);
-    #         $cmd      = (($enable) ? 'set-locate' : 'unset-locate');
-    #         $json     = json_encode(['cmd' => $cmd, 'mac' => $mac]);
-    #         $response = $this->exec_curl('/api/s/'.$this->site.'/cmd/devmgr', 'json='.$json);
-    #         return $this->process_response_boolean($response);
-    #
 
     locate_ap = UnifiAPICall(
         "Toggle flashing LED of an access point for locating purposes",
         "cmd/devmgr",
-        rest_command="$cmd",
-        json_args=['mac'],
+        json_args=['mac', 'enabled'],
+        json_fix=[fix_locate_ap_cmd],
     )
 
     site_leds = UnifiAPICall(
@@ -1048,22 +820,26 @@ class UnifiClient(metaclass=MetaNameFixer):
         "Low-level function to set wireless LAN settings",
         "rest/wlanconf",
         path_arg_name="wlan_id",
-        path_arg_optional = False,
+        path_arg_optional=False,
         json_body_name="settings",
         method="PUT")
 
     def set_wlan_settings(self, wlan_id, passphrase, ssid=None):
-        settings={"x_passphrase": passphrase}
+        """Set wireless LAN password and SSID"""
+        settings = {"x_passphrase": passphrase}
         if ssid is not None:
             settings['name'] = ssid
 
         return self._raw_set_wlan_settings(wlan_id, settings=settings)
 
     def enable_wlan(self, wlan_id, enabled):
+        """Enable or diabble a wireless LAN"""
         return self._raw_set_wlan_settings(wlan_id, {"enabled": bool(enabled)})
 
-    def set_wlan_mac_filter(self, wlan_id, enabled, whitelist=False, mac_list=[]):
+    def set_wlan_mac_filter(self, wlan_id, enabled, whitelist=False, mac_list=None):
         "Set wireless LAN MAC filtering policy"
+        if mac_list is None:
+            mac_list = []
         settings = {"mac_filter_enabled": enabled,
                     "mac_filter_policy": 'allow' if whitelist else 'deny',
                     "mac_filter_list": mac_list}
@@ -1077,31 +853,18 @@ class UnifiClient(metaclass=MetaNameFixer):
         method="DELETE",
     )
 
-
-    # list_events
-    # List events
-    #
-    # returns an array of known events
-    # optional parameter <historyhours> = hours to go back, default value is 720 hours
-    # optional parameter <start>        = which event number to start with (useful for paging of results), default value is 0
-    # optional parameter <limit>        = number of events to return, default value is 3000
-    #
-    #
-    #
-    # list_events(($historyhours = 720, $start = 0, $limit = 3000))
-    #
-    #         if (!$this->is_loggedin) return false;
-    #         $json     = ['_sort' => '-time', 'within' => intval($historyhours), 'type' => null, '_start' => intval($start), '_limit' => intval($limit)];
-    #         $json     = json_encode($json);
-    #         $response = $this->exec_curl('/api/s/'.$this->site.'/stat/event', 'json='.$json);
-    #         return $this->process_response($response);
-    #
-
-    #list_events = UnifiAPICall(
-    #    "List events",
-    #    "stat/event",
-    #    json_args=[***$json***],
-    #)
+    list_events = UnifiAPICall(
+        "List events",
+        "stat/event",
+        json_args=[('historyhours', 720),
+                   ('start', 0),
+                   ('limit', 1000)],
+        json_fix=[fix_arg_names({'historyhours': 'within',
+                                 'start': '_start',
+                                 'limit': '_limit'}),
+                  fix_constants({'_sort': '-time',
+                                 'type': None})],
+    )
 
     list_alarms = UnifiAPICall(
         "List alarms",
@@ -1155,14 +918,14 @@ class UnifiClient(metaclass=MetaNameFixer):
     power_cycle_switch_port = UnifiAPICall(
         "Power-cycle the PoE output of a switch port",
         "cmd/devmgr",
-        rest_command = 'power-cycle',
+        rest_command='power-cycle',
         json_args=['mac', 'port_idx'],
     )
 
     spectrum_scan = UnifiAPICall(
         "Trigger an RF scan by an AP",
         "cmd/devmgr",
-        rest_command = 'spectrum-scan',
+        rest_command='spectrum-scan',
         json_args=['mac'],
     )
 
