@@ -166,38 +166,44 @@ class UnifiClient(metaclass=MetaNameFixer):
                    ("up", None),
                    ("down", None),
                    ("MBytes", None),
-                   ("ap_mac", None)])
+                   ("ap_mac", None)],
+        )
 
     unauthorize_guest = UnifiAPICall(
         "Unauthorize a client device",
         "cmd/stamgr",
         rest_command="unauthorize-guest",
-        json_args=["mac"])
+        json_args=["mac"],
+        )
 
     reconnect_client = UnifiAPICall(
         "Force reconnection of a client device",
         "cmd/stamgr",
         rest_command="kick-sta",
-        json_args=["mac"])
+        json_args=["mac"],
+        )
 
     block_client = UnifiAPICall(
         "Block a client device",
         "cmd/stamgr",
         rest_command="block-sta",
-        json_args=["mac"])
+        json_args=["mac"],
+        )
 
     unblock_client = UnifiAPICall(
         "Unblock a client device",
         "cmd/stamgr",
         rest_command="unblock-sta",
-        json_args=["mac"])
+        json_args=["mac"],
+        )
 
     forget_client = UnifiAPICall(
         "Forget a client device",
         "cmd/stamgr",
         rest_command="forget-sta",
         json_args=["macs"],
-        json_fix=[fix_macs_list])
+        json_fix=[fix_macs_list],
+        )
 
     create_client = UnifiAPICall(
         "Creat a new user/client device",
@@ -206,7 +212,8 @@ class UnifiClient(metaclass=MetaNameFixer):
                    "usergroup_id",
                    ("name", None),
                    ("note", None)],
-        json_fix=[fix_note_noted, fix_user_object_nesting])
+        json_fix=[fix_note_noted, fix_user_object_nesting],
+        )
 
     set_client_note = UnifiAPICall(
         "Add, modify or remove a note on a client device",
@@ -215,7 +222,8 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_optional=False,
         json_args=["note"],
         json_fix=[fix_note_noted],
-        method="PUT")
+        method="PUT",
+        )
 
     set_client_name = UnifiAPICall(
         "Add, modify or remove a name on a client device",
@@ -223,7 +231,8 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="user_id",
         path_arg_optional=False,
         json_args=["name"],
-        method="PUT")
+        method="PUT",
+        )
 
     # Functions for retreiving statistics
 
@@ -258,7 +267,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_fix=[fix_end_now,
                   fix_start_1year,
                   fix_ensure_time_attrib],
-    )
+        )
 
     stat_5minutes_aps = UnifiAPICall(
         "5 minutes stats method for a single access point or all access points",
@@ -306,7 +315,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_fix=[fix_end_now,
                   fix_start_12hours,
                   fix_ensure_time_attrib],
-    )
+        )
 
     stat_hourly_user = UnifiAPICall(
         "Hourly stats method for a a single user/client device",
@@ -318,7 +327,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_fix=[fix_end_now,
                   fix_start_7days,
                   fix_ensure_time_attrib],
-    )
+        )
 
     stat_daily_user = UnifiAPICall(
         "Daily stats method for a single user/client device",
@@ -366,13 +375,13 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/alluser",
         json_args=[('type', 'all'),
                    ('conn', 'all'),
-                   ('within', 8760)],
+                   ('within', 365 * 24)],
         )
 
     list_guests = UnifiAPICall(
         "List guest devices",
         "stat/guest",
-        json_args=[('within', 8760)],
+        json_args=[('within', 365 * 24)],
         )
 
     list_clients = UnifiAPICall(
@@ -398,7 +407,8 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="client_mac",
         path_arg_optional=False,
         json_args=['usergroup_id'],
-        method="PUT")
+        method="PUT",
+        )
 
     ### FIX ME: Does the JSON in this call need the group_id as _id as
     ### well having it in the path?
@@ -413,7 +423,7 @@ class UnifiClient(metaclass=MetaNameFixer):
                    ('qos_rate_max_down', -1),
                    ('qos_rate_max_up', -1)],
         method="PUT",
-    )
+        )
 
     create_usergroup = UnifiAPICall(
         "Create user group",
@@ -421,7 +431,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=['name',
                    ('qos_rate_max_down', -1),
                    ('qos_rate_max_up', -1)],
-    )
+        )
 
     delete_usergroup = UnifiAPICall(
         "Delete user group",
@@ -429,7 +439,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="group_id",
         path_arg_optional=False,
         method="DELETE",
-    )
+        )
 
     list_health = UnifiAPICall(
         "List health metrics",
@@ -438,58 +448,66 @@ class UnifiClient(metaclass=MetaNameFixer):
     #### Should probably support '?scale=5minutes'
     list_dashboard = UnifiAPICall(
         "List dashboard metrics",
-        "stat/dashboard")
+        "stat/dashboard",
+        )
 
     list_users = UnifiAPICall(
         "List knows clients groups",
-        "list/user")
+        "list/user",
+        )
 
     list_devices = UnifiAPICall(
         "List managed devices on this site",
         "stat/devices",
-        path_arg_name="device_mac")
+        path_arg_name="device_mac",
+        )
 
     list_tags = UnifiAPICall(
         "List known device tags",
-        "rest/tag")
+        "rest/tag",
+        )
 
     list_rogueaps = UnifiAPICall(
         "List rogue or nearby APs",
         "stat/rogueap",
-        json_args=[('within', 24)])
+        json_args=[('within', 24)],
+        )
 
     list_rogueknown = UnifiAPICall(
         "List rogue or nearby APs",
-        "rest/rogueknown")
+        "rest/rogueknown",
+        )
 
     list_sites = UnifiAPICallNoSite(
         "List sites on this controller",
-        "self/sites")
+        "self/sites",
+        )
 
     stat_sites = UnifiAPICallNoSite(
         "Get stats for sites on this controller",
-        "stat/sites")
+        "stat/sites",
+        )
 
     create_site = UnifiAPICall(
         "Create a site",
         "cmd/sitemgr",
         rest_command="add-site",
         json_args=['desc'],
-    )
+        )
 
     delete_site = UnifiAPICall(
         "Delete a site",
         "cmd/sitemgr",
         rest_command="delete-site",
         json_args=['site'],
-    )
+        )
 
     set_site_name = UnifiAPICall(
         "Change a site's name",
         "cmd/sitemgr",
         rest_command="update-site",
         json_args=['desc'],
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     set_site_country = UnifiAPICall(
@@ -498,7 +516,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="country_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     set_site_locale = UnifiAPICall(
@@ -507,7 +525,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="locale_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     set_site_snmp = UnifiAPICall(
@@ -516,7 +534,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="snmp_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     set_site_mgmt = UnifiAPICall(
@@ -525,7 +543,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="gmt_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     set_site_guest_access = UnifiAPICall(
         "Set site guest access",
@@ -533,7 +551,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="guest_access_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     set_site_ntp = UnifiAPICall(
         "Set site ntp",
@@ -541,7 +559,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="ntp_id",
         json_body_name="setting",
         method="PUT",
-    )
+        )
 
     set_site_connectivity = UnifiAPICall(
         "Set site connectivity",
@@ -555,12 +573,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         "List admins",
         "cmd/sitemgr",
         rest_command="get-admins",
-    )
+        )
 
     list_all_admins = UnifiAPICallNoSite(
         "List all admins",
         "stat/admin",
-    )
+        )
 
     invite_admin = UnifiAPICall(
         "Invite a new admin for access to the current site",
@@ -575,46 +593,46 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_fix=[fix_arg_names({'enable_sso':'for_sso'}),
                   fix_admin_permissions,
                   fix_check_email('email')],
-    )
+        )
 
     revoke_admin = UnifiAPICall(
         "Revoke an admin",
         "cmd/sitemgr",
         rest_command="revoke-admin",
         json_args=['admin'],
-    )
+        )
 
     list_wlan_groups = UnifiAPICall(
         "List wlan_groups",
         "list/wlangroup",
-    )
+        )
 
     stat_sysinfo = UnifiAPICall(
         "Show sysinfo",
         "stat/sysinfo",
-    )
+        )
 
     stat_status = UnifiAPICallNoSite(
         "Get controller status",
         "status",
-    )
+        )
 
     list_self = UnifiAPICall(
         "Get info about the logged in user",
         "self",
-    )
+        )
 
     list_vouchers = UnifiAPICall(
         "List vouchers",
         "stat/voucher",
         json_args=['create_time'],
-    )
+        )
 
     #### FIX ME: Should add support for 'within' parameter
     stat_payment = UnifiAPICall(
         "List payments",
         "stat/payment",
-    )
+        )
 
     create_hotspotop = UnifiAPICall(
         "Create hotspot operator (using REST)",
@@ -623,12 +641,12 @@ class UnifiClient(metaclass=MetaNameFixer):
                    'x_password',
                    'nate'],
         json_fix=[fix_note_noted],
-    )
+        )
 
     list_hotspotop = UnifiAPICall(
         "List hotspot operators (using REST)",
         "rest/hotspotop",
-    )
+        )
 
     create_voucher = UnifiAPICall(
         "Create voucher(s)",
@@ -640,7 +658,7 @@ class UnifiClient(metaclass=MetaNameFixer):
                    ('up', None),
                    ('down', None),
                    ('MBytes', None)],
-    )
+        )
 
     revoke_voucher = UnifiAPICall(
         "Revoke voucher",
@@ -648,7 +666,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         rest_command="delete-voucher",
         json_args=['voucher_id'],
         json_fix=[fix_arg_names({'voucher_id':"_id"})],
-    )
+        )
 
     extend_guest_validity = UnifiAPICall(
         "Extend guest validity",
@@ -656,66 +674,66 @@ class UnifiClient(metaclass=MetaNameFixer):
         rest_command="extend",
         json_args=['guest_id'],
         json_fix=[fix_arg_names({'guest_id':"_id"})],
-    )
+        )
 
     list_portforward_stats = UnifiAPICall(
         "List port forwarding stats",
         "stat/portforward",
-    )
+        )
 
     list_dpi_stats = UnifiAPICall(
         "List deep packet inspection stats",
         "stat/dpi",
-    )
+        )
 
     list_current_channels = UnifiAPICall(
         "List current channels",
         "stat/current-channel",
-    )
+        )
 
     list_country_codes = UnifiAPICall(
         "List country codes",
         "stat/ccode",
-    )
+        )
 
     list_portforwarding = UnifiAPICall(
         "List port forwarding settings",
         "list/portforward",
-    )
+        )
 
     list_dynamicdns = UnifiAPICall(
         "List dynamic DNS settings",
         "list/dynamicdns",
-    )
+        )
 
     list_portconf = UnifiAPICall(
         "List port configurations",
         "list/portconf",
-    )
+        )
 
     list_extension = UnifiAPICall(
         "List VoIP extensions",
         "list/extension",
-    )
+        )
 
     list_settings = UnifiAPICall(
         "List site settings",
         "get/setting",
-    )
+        )
 
     adopt_device = UnifiAPICall(
         "Adopt a device to the selected site",
         "cmd/devmgr",
         rest_command="adopt",
         json_args=['mac'],
-    )
+        )
 
     restart_ap = UnifiAPICall(
         "Reboot an access point",
         "cmd/devmgr",
         rest_command="restart",
         json_args=['mac'],
-    )
+        )
 
     disable_ap = UnifiAPICall(
         "Disable/enable an access point (using REST)",
@@ -724,7 +742,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_optional=False,
         json_args=['disabled'],
         method="PUT",
-    )
+        )
 
     led_override = UnifiAPICall(
         "Override LED mode for a device (using REST)",
@@ -734,20 +752,20 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=['led_override'],
         json_fix=[fix_enforce_values({"led_override": ['off', 'on', 'default']})],
         method="PUT",
-    )
+        )
 
     locate_ap = UnifiAPICall(
         "Toggle flashing LED of an access point for locating purposes",
         "cmd/devmgr",
         json_args=['mac', 'enabled'],
         json_fix=[fix_locate_ap_cmd],
-    )
+        )
 
     site_leds = UnifiAPICall(
         "Toggle LEDs of all the access points ON or OFF",
         "set/setting/mgmt",
         json_args=['led_enabled'],
-    )
+        )
 
     set_ap_radiosettings = UnifiAPICall(
         "Update access point radio settings",
@@ -755,7 +773,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="ap_id",
         path_arg_optional=False,
         json_args=['radio_table', 'channel', 'ht', 'tx_power_mode', 'tx_power'],
-    )
+        )
 
     rename_ap = UnifiAPICall(
         "Rename access point",
@@ -763,26 +781,26 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="ap_id",
         path_arg_optional=False,
         json_args=['name'],
-    )
+        )
 
     move_device = UnifiAPICall(
         "Move a device to another site",
         "cmd/sitemgr",
         rest_command="move-device",
         json_args=['site', 'mac'],
-    )
+        )
 
     delete_device = UnifiAPICall(
         "Delete a device from the current site",
         "cmd/sitemgr",
         rest_command="delete-device",
         json_args=['mac'],
-    )
+        )
 
     list_networkconf = UnifiAPICall(
         "List network settings",
         "rest/networkconf",
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     create_network = UnifiAPICall(
@@ -790,7 +808,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         "rest/networkconf",
         json_body_name='settings',
         method="POST",
-    )
+        )
 
     #### FIX ME: Need better doc string for setting
     set_networksettings = UnifiAPICall(
@@ -800,7 +818,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_optional=False,
         json_body_name='settings',
         method="PUT",
-    )
+        )
 
     delete_network = UnifiAPICall(
         "Delete a network (using REST)",
@@ -808,13 +826,13 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="network_id",
         path_arg_optional=False,
         method="DELETE",
-    )
-
+        )
 
     list_wlanconf = UnifiAPICall(
         "List wireless LAN settings for all or one network",
         "rest/wlanconf",
-        path_arg_name="wlan_id")
+        path_arg_name="wlan_id",
+        )
 
     _raw_set_wlan_settings = UnifiAPICall(
         "Low-level function to set wireless LAN settings",
@@ -822,7 +840,8 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="wlan_id",
         path_arg_optional=False,
         json_body_name="settings",
-        method="PUT")
+        method="PUT",
+        )
 
     def set_wlan_settings(self, wlan_id, passphrase, ssid=None):
         """Set wireless LAN password and SSID"""
@@ -851,7 +870,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="wlan_id",
         path_arg_optional=False,
         method="DELETE",
-    )
+        )
 
     list_events = UnifiAPICall(
         "List events",
@@ -864,17 +883,17 @@ class UnifiClient(metaclass=MetaNameFixer):
                                  'limit': '_limit'}),
                   fix_constants({'_sort': '-time',
                                  'type': None})],
-    )
+        )
 
     list_alarms = UnifiAPICall(
         "List alarms",
         "list/alarm",
-    )
+        )
 
     count_alarms = UnifiAPICall(
         "Count alarms",
         "cnt/alarm",
-    )
+        )
 
     archive_alarm = UnifiAPICall(
         "Archive alarms(s)",
@@ -882,59 +901,59 @@ class UnifiClient(metaclass=MetaNameFixer):
         rest_command="archive-alarm",
         json_args=['_id'],
         method="POST",
-    )
+        )
 
     archive_all_alarms = UnifiAPICall(
         "Archive alarms(s)",
         "cmd/evtmgr",
         rest_command="archive-all-alarms",
         method="POST",
-    )
+        )
 
     upgrade_device = UnifiAPICall(
         "Upgrade a device to the latest firmware",
         "cmd/devmgr/upgrade",
         json_args=['mac'],
-    )
+        )
 
     upgrade_device_external = UnifiAPICall(
         "Upgrade a device to a specific firmware file",
         "cmd/devmgr/upgrade-external",
         json_args=['mac', 'url'],
-    )
+        )
 
     start_rolling_upgrade = UnifiAPICall(
         "Start rolling upgrade",
         "cmd/devmgr",
         rest_command='set-rollupgrade',
-    )
+        )
 
     cancel_rolling_upgrade = UnifiAPICall(
         "Cancel rolling upgrade",
         "cmd/devmgr",
         rest_command='unset-rollupgrade',
-    )
+        )
 
     power_cycle_switch_port = UnifiAPICall(
         "Power-cycle the PoE output of a switch port",
         "cmd/devmgr",
         rest_command='power-cycle',
         json_args=['mac', 'port_idx'],
-    )
+        )
 
     spectrum_scan = UnifiAPICall(
         "Trigger an RF scan by an AP",
         "cmd/devmgr",
         rest_command='spectrum-scan',
         json_args=['mac'],
-    )
+        )
 
     spectrum_scan_state = UnifiAPICall(
         "Check the RF scanning state of an AP",
         "stat/spectrum-scan",
         path_arg_name="ap_mac",
         path_arg_optional=False,
-    )
+        )
 
     set_device_settings_base = UnifiAPICall(
         "Update device settings, base",
@@ -943,18 +962,19 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_optional=False,
         json_body_name='settings',
         method="PUT",
-    )
+        )
 
     list_radius_profiles = UnifiAPICall(
         "List Radius profiles",
         "rest/radiusprofile",
-    )
+        )
 
     list_radius_accounts = UnifiAPICall(
         "List Radius user accounts",
         "rest/account",
-    )
+        )
 
+    #### FIX ME: This needs documentation of the tunnel types
     create_radius_account = UnifiAPICall(
         "Create a Radius user account (using REST)",
         "rest/account",
@@ -964,7 +984,7 @@ class UnifiClient(metaclass=MetaNameFixer):
                    'tunnel_medium_type',
                    ('vlan', None)],
         method="POST",
-    )
+        )
 
     set_radius_account_base = UnifiAPICall(
         "Update Radius account, base",
@@ -973,7 +993,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_optional=False,
         json_body_name='account_details',
         method="PUT",
-    )
+        )
 
     delete_radius_account = UnifiAPICall(
         "Delete a Radius account (using REST)",
@@ -981,4 +1001,4 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="account_id",
         path_arg_optional=False,
         method="DELETE",
-    )
+        )

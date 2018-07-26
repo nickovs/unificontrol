@@ -91,10 +91,12 @@ def fix_enforce_values(mapping):
                     key, mapping[key]))
     return arg_value_checker
 
+# Choose which REST command to use depending on if we are enabling or disabiling
 def fix_locate_ap_cmd(json):
     json['cmd'] = 'set-locate' if json['enabled'] else 'unset-locate'
     del json['enabled']
 
+# Convert function arguments for admin creation into internal representation
 def fix_admin_permissions(json):
     permissions = []
     if 'device_adopt' in json:
@@ -114,6 +116,8 @@ def fix_admin_permissions(json):
     return json
 
 def fix_check_email(field_name):
+    """Given the name of a field return a fixer that check that that field is
+    a valid email address"""
     def email_checker(json):
         email = json[field_name] = json[field_name].strip()
         if not EMAIL_RE.match(email):
