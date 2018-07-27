@@ -37,7 +37,7 @@ class _UnifiAPICall:
         self._json_body_name = json_body_name
         self._rest = rest_command
         self._need_login = need_login
-        if not isinstance(json_fix, (list, tuple)):
+        if not isinstance(json_fix, (list, tuple, type(None))):
             json_fix = [json_fix]
         self._fixes = json_fix
         self.__doc__ = doc

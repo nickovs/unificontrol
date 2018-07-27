@@ -37,16 +37,16 @@ from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list
                           fix_ensure_time_attrib, fix_constants, fix_arg_names,
                           fix_enforce_values, fix_locate_ap_cmd, fix_check_email,
                           fix_admin_permissions)
+from .pinned_requests import PinningHTTPSAdapter
 
-CACHE_CERT = "CACHE_CERT"
+# Indicate that the client should fetch the server's SSL certificate
+FETCH_CERT = "FETCH_CERT"
 
 # Default lists of stats to return for various stat calls
 _DEFAULT_SITE_ATTRIBUTES = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes',
                             'wlan_bytes', 'num_sta', 'lan-num_sta',
                             'wlan-num_sta', 'time']
-
 _DEFAULT_AP_ATTRIBUTES = ['bytes', 'num_sta', 'time']
-
 _DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
 # The main Unifi client object
@@ -56,19 +56,21 @@ class UnifiClient(metaclass=MetaNameFixer):
     """An abstract interface to the Unifi controller"""
 
     def __init__(self, host="localhost", port=8443,
-                 username="admin", password=None,
-                 site=None, ssl_verify=False):
+                 username="admin", password=None, site=None,
+                 cert=FETCH_CERT):
         self._host = host
         self._port = port
         self._user = username
         self._password = password
         self._site = site
-        self._verify = ssl_verify
-        self._session = requests.Session()
+        self._session = requests.session()
         self._exit_handler = None
 
-        if ssl_verify == CACHE_CERT:
-            self._cache_server_cert()
+        if cert == FETCH_CERT:
+            cert = ssl.get_server_certificate((host, port))
+
+        adaptor = PinningHTTPSAdapter(cert)
+        self._session.mount("https://{}:{}".format(host, port), adaptor)
 
     def _exit(self):
         if self._verify:
@@ -96,7 +98,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         request = requests.Request(method, url, json=rest_dict)
         ses = self._session
 
-        resp = ses.send(ses.prepare_request(request), verify=self._verify)
+        resp = ses.send(ses.prepare_request(request))
 
         # If we fail with unauthorised and need login then retry just once
         if resp.status_code == 401 and need_login:
