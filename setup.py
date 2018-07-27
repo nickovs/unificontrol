@@ -6,15 +6,16 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="unificontrol",
-    version="0.0.1",
+    version="0.2.0",
     author="Nicko van Someren",
     author_email="nicko@nicko.org",
-    description="Secure access to Unifi network controllers",
+    description="Secure access to Ubiquiti Unifi network controllers",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/nickovs/unificontrol",
     packages=setuptools.find_packages(),
     classifiers=(
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",

@@ -10,7 +10,14 @@ include:
 
 ## Installation
 
-```python
+To install the most recent release use:
+```
+pip install unificontrol
+```
+
+To install the latest version of the code from GitHub use:
+
+```
 pip install -e git+https://github.com/nickovs/unificontrol.git@master#egg=unificontrol
 ```
 
@@ -29,7 +36,7 @@ Since the Unifi controller uses a [self-signed certifcate](#ssl-security-with-se
 
 ```python
 import ssl
-cert = ssl.get_server_certificate((host, port))
+cert = ssl.get_server_certificate(("unifi.localdomain", 8443))
 # Store the cert in a safe place
 ...
 # Fetch the cert from a safe place
