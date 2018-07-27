@@ -10,15 +10,35 @@ include:
 
 ## Installation
 
-```
+```python
 pip install -e git+https://github.com/nickovs/unificontrol.git@master#egg=unificontrol
 ```
 
 ## Usage
 
+The simplest way to use this client is simply to create an instance with the necessary parameters and log in.
+
+```python
+client = UnifiClient(host="unifi.localdomain",
+    username=UNIFI_USER, password=UNIFI_PASSWORD, site=UNIFI_SITE)
 ```
-client = UnifiClient(host="unifi.localdomain", username=UNIFI_USER, password=UNIFI_PASSWORD, site=UNIFI_SITE)
+
+The host name (and the host port, if you are using something other than the default 8443) must be specificed when you create the client. The username and password can be passed to the login method instead of the contstructor if you prefer. If you supply then username and password in the constructor then the client will automatically log in when needed and re-authenticate if your session expires.
+
+Since the Unifi controller uses a [self-signed certifcate](#ssl-security-with-self-signed-certificates) the default behaviour of the client is to fetch the SSL certificate from the server when you create the client instance and pin all future SSL connections to require the same certificate. This works OK but if you are building some tool that will talk to the controller and you have place to store configuration then a better solution is to store a copy of the correct certificate in a safe place and supply it to the constructor using the `cert` keyword argument. A server's certifcate can be fetched using the python ssl library:
+
+```python
+import ssl
+cert = ssl.get_server_certificate((host, port))
+# Store the cert in a safe place
+...
+# Fetch the cert from a safe place
+client = UnifiClient(host="unifi.localdomain",
+    username=UNIFI_USER, password=UNIFI_PASSWORD, site=UNIFI_SITE,
+    cert=cert)
 ```
+
+If you have a proper certificate for the controller, issued by a known authority and with a subject name matching the host name used to access the server then you can switch off the certificate pinning by passing `cert=None`.
 
 
 ## SSL Security with self-signed certificates

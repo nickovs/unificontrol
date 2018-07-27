@@ -69,30 +69,9 @@ class UnifiClient(metaclass=MetaNameFixer):
         if cert == FETCH_CERT:
             cert = ssl.get_server_certificate((host, port))
 
-        adaptor = PinningHTTPSAdapter(cert)
-        self._session.mount("https://{}:{}".format(host, port), adaptor)
-
-    def _exit(self):
-        if self._verify:
-            os.remove(self._verify)
-            self._verify = False
-
-    def __del__(self):
-        if self._exit_handler:
-            os.remove(self._verify)
-            atexit.unregister(self._exit_handler)
-
-    def _cache_server_cert(self):
-        cert = ssl.get_server_certificate((self._host, self._port))
-        if cert:
-            cert_file = tempfile.NamedTemporaryFile(mode="w+", suffix=".pem", delete=False)
-            cert_file.write(cert)
-            cert_file.close()
-            cert_name = cert_file.name
-            self._verify = cert_name
-            self._exit_handler = atexit.register(self._exit)
-        else:
-            raise Exception("Failed to fetch SSL certificate")
+        if cert is not None:
+            adaptor = PinningHTTPSAdapter(cert)
+            self._session.mount("https://{}:{}".format(host, port), adaptor)
 
     def _execute(self, url, method, rest_dict, need_login=True):
         request = requests.Request(method, url, json=rest_dict)
