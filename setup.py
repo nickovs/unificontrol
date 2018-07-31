@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="unificontrol",
-    version="0.2.0",
+    version="0.2.1",
     author="Nicko van Someren",
     author_email="nicko@nicko.org",
     description="Secure access to Ubiquiti Unifi network controllers",
