@@ -88,7 +88,7 @@ class UnifiClient(metaclass=MetaNameFixer):
                     raise UnifiLoginError("Invalid credentials")
                 else:
                     raise UnifiLoginError("Need user name and password to log in")
-            resp = ses.send(ses.prepare_request(request), verify=self._verify)
+            resp = ses.send(ses.prepare_request(request))
 
         if resp.ok:
             response = resp.json()
