@@ -39,7 +39,8 @@ from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list
                           fix_admin_permissions)
 from .pinned_requests import PinningHTTPSAdapter
 
-# Indicate that the client should fetch the server's SSL certificate
+#: A tag to indicate that the client should fetch the server's SSL certificate
+#: when it is created and then pin to that certificate.
 FETCH_CERT = "FETCH_CERT"
 
 # Default lists of stats to return for various stat calls
@@ -49,15 +50,30 @@ _DEFAULT_SITE_ATTRIBUTES = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes',
 _DEFAULT_AP_ATTRIBUTES = ['bytes', 'num_sta', 'time']
 _DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
+X_PASSWORD_FIX=fix_arg_names({"password":"x_passowrd"})
+
+
 # The main Unifi client object
 
 class UnifiClient(metaclass=MetaNameFixer):
     # pylint: disable=too-many-instance-attributes, too-many-arguments
-    """An abstract interface to the Unifi controller"""
+    """An abstract interface to the Unifi controller
+
+    Args:
+        host (str): hostname of Unifi controller
+        port (int): port on which controller is to be accessed
+        username (str): user name for admin account
+        password (str): password for admin account
+        site (str): identifier of site to be managed
+        cert (str or bytes): Server SSL certificate to pin for secure access.
+            Pass ``None`` to use regular certificate verification or the
+            constant ``FETCH_CERT`` to use the current certificate of the server
+            and pin that cert for future accesses.
+    """
 
     def __init__(self, host="localhost", port=8443,
-                 username="admin", password=None, site=None,
-                 cert=FETCH_CERT):
+                 username="admin", password=None, site="default",
+                 cert=FETCH_CERT):                 
         self._host = host
         self._port = port
         self._user = username
@@ -100,17 +116,17 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     @property
     def host(self):
-        """Host name of contoller"""
+        """(Property) Host name of contoller"""
         return self._host
 
     @property
     def port(self):
-        """Port for accessing controller"""
+        """(Property) Port for accessing controller"""
         return self._port
 
     @property
     def site(self):
-        """Identifier of site being managed"""
+        """(Writable property) Identifier of site being managed"""
         return self._site
 
     @site.setter
@@ -127,7 +143,15 @@ class UnifiClient(metaclass=MetaNameFixer):
         need_login=False)
 
     def login(self, username=None, password=None):
-        "Log in to Unifi controller"
+        """Log in to Unifi controller
+
+        Args:
+            username (str): optional user name for admin account
+            password (str): optional password for admin account
+
+        The username and password arguments are optional if they were provided
+        when the client was created.
+        """
         self._login(username=username if username else self._user,
                     password=password if password else self._password)
 
@@ -139,7 +163,17 @@ class UnifiClient(metaclass=MetaNameFixer):
     # Functions for dealing with guest and client devices
 
     authorize_guest = UnifiAPICall(
-        "Authorize a client device",
+        """Authorize a client device
+
+        Args:
+            mac (str): MAC address of the guest client to be authorized
+            minutes (int): duration for which the client is authorised
+            up (int): optional upstream bandwidth limit in Kb/sec
+            down (int): optional downstream bandwidth limit in Kb/sec
+            MBytes (int): optional total data volume limit in megabytes
+            ap_mac (str): optional MAC address of the access point to
+                which the client will attach
+        """,
         "cmd/stamgr",
         rest_command="authorize-guest",
         json_args=["mac",
@@ -151,7 +185,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     unauthorize_guest = UnifiAPICall(
-        "Unauthorize a client device",
+        """Unauthorize a guest client device
+
+        Args:
+            mac (str): MAC address of guest client the unauthorize
+        """,
         "cmd/stamgr",
         rest_command="unauthorize-guest",
         json_args=["mac"],
@@ -576,6 +614,23 @@ class UnifiClient(metaclass=MetaNameFixer):
                   fix_check_email('email')],
         )
 
+    create_admin = UnifiAPICall(
+        "Create a new admin user",
+        "cmd/sitemgr",
+        json_args=['name',
+                  'email',
+                  'password',
+                  ('requires_new_password', False),
+                  ('readonly', False),
+                  ('enable_sso', True),
+                  ('device_adopt', False),
+                  ('device_restart', False)],
+        rest_command='create-admin',
+        json_fix=[fix_arg_names({'enable_sso':'for_sso', 'password': 'x_password'}),
+                  fix_admin_permissions,
+                  fix_check_email('email')],
+        )
+    
     revoke_admin = UnifiAPICall(
         "Revoke an admin",
         "cmd/sitemgr",
@@ -616,16 +671,17 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     create_hotspotop = UnifiAPICall(
-        "Create hotspot operator (using REST)",
+        "Create hotspot operator",
         "rest/hotspotop",
         json_args=['name',
-                   'x_password',
-                   'nate'],
-        json_fix=[fix_note_noted],
+                   'password',
+                   'note'],
+        json_fix=[fix_note_noted,
+                  X_PASSWORD_FIX],
         )
 
     list_hotspotop = UnifiAPICall(
-        "List hotspot operators (using REST)",
+        "List hotspot operators",
         "rest/hotspotop",
         )
 
@@ -717,7 +773,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     disable_ap = UnifiAPICall(
-        "Disable/enable an access point (using REST)",
+        "Disable/enable an access point",
         "rest/device",
         path_arg_name="ap_id",
         path_arg_optional=False,
@@ -726,7 +782,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     led_override = UnifiAPICall(
-        "Override LED mode for a device (using REST)",
+        "Override LED mode for a device",
         "rest/device",
         path_arg_name="device_id",
         path_arg_optional=False,
@@ -802,7 +858,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     delete_network = UnifiAPICall(
-        "Delete a network (using REST)",
+        "Delete a network",
         "rest/networkconf",
         path_arg_name="network_id",
         path_arg_optional=False,
@@ -846,7 +902,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         return self._raw_set_wlan_settings(wlan_id, settings=settings)
 
     delete_wlan = UnifiAPICall(
-        "Delete a wlan (using REST)",
+        "Delete a wlan",
         "rest/wlanconf",
         path_arg_name="wlan_id",
         path_arg_optional=False,
@@ -854,7 +910,13 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_events = UnifiAPICall(
-        "List events",
+        """List events
+
+        Args:
+            historyhours (int): how far back to list events
+            start (int): index of the first event to return
+            limit (int): maximum number of events to return
+        """,
         "stat/event",
         json_args=[('historyhours', 720),
                    ('start', 0),
@@ -867,7 +929,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_alarms = UnifiAPICall(
-        "List alarms",
+        "List all alarms",
         "list/alarm",
         )
 
@@ -877,11 +939,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     archive_alarm = UnifiAPICall(
-        "Archive alarms(s)",
+        """Archive a single alarm""",
         "cmd/evtmgr",
         rest_command="archive-alarm",
-        json_args=['_id'],
+        json_args=['alarm_id'],
         method="POST",
+        json_fix=[fix_arg_names({'alarm_id':'_id'})],
         )
 
     archive_all_alarms = UnifiAPICall(
@@ -957,13 +1020,14 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     #### FIX ME: This needs documentation of the tunnel types
     create_radius_account = UnifiAPICall(
-        "Create a Radius user account (using REST)",
+        "Create a Radius user account",
         "rest/account",
         json_args=['name',
-                   'x_password',
+                   'password',
                    'tunnel_type',
                    'tunnel_medium_type',
                    ('vlan', None)],
+        json_fix=[X_PASSWORD_FIX],
         method="POST",
         )
 
@@ -977,7 +1041,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     delete_radius_account = UnifiAPICall(
-        "Delete a Radius account (using REST)",
+        "Delete a Radius account",
         "rest/account",
         path_arg_name="account_id",
         path_arg_optional=False,

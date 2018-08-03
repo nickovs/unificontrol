@@ -64,3 +64,7 @@ Fortunately there is a solution to these problems. The solution is known as _cer
 
 This library implements certificate pinning.
 
+## Acknowledgments
+
+I would almost certainly never have written such a complete implementation of the API is it have not been for the hard work done by the authors of the PHP [Unifi API client](https://github.com/Art-of-WiFi/UniFi-API-client) created by [Art of WiFi](https://artofwifi.net). While the code here was written from scratch, all of the necessary reverse engineering of the API was taken from the PHP client. Without that open source project I would probably have stopped with less than a quarter of the API finished.
+

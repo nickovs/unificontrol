@@ -25,7 +25,8 @@ controller. It offers a pythonic interface, automatic session handling, SSL
 certificate pinning and interface introspection.
 """
 
-from .unifi import UnifiClient
+from .unifi import UnifiClient, FETCH_CERT
 from .exceptions import UnifiError, UnifiAPIError, UnifiTransportError, UnifiLoginError
+from .constants import RadiusTunnelType, RadiusTunnelMediumType
 
 name = "unificontrol"

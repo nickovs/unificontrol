@@ -44,18 +44,20 @@ class _UnifiAPICall:
 
         args = [Parameter('self', POSITIONAL_ONLY)]
         if path_arg_name:
-            args.append(Parameter(path_arg_name, POSITIONAL_ONLY,
+            args.append(Parameter(path_arg_name, POSITIONAL_OR_KEYWORD,
                                   default=None if path_arg_optional else Parameter.empty))
+
         if json_args:
+            json_args.sort(key=lambda x:isinstance(x,tuple))
             for arg_name in json_args:
                 if isinstance(arg_name, tuple):
                     arg_name, default = arg_name
                 else:
                     default = Parameter.empty
-                args.append(Parameter(arg_name, KEYWORD_ONLY, default=default))
+                args.append(Parameter(arg_name, POSITIONAL_OR_KEYWORD, default=default))
         if json_body_name:
             args.append(Parameter(json_body_name,
-                                  KEYWORD_ONLY if path_arg_optional else POSITIONAL_OR_KEYWORD,
+                                  POSITIONAL_OR_KEYWORD if path_arg_optional else POSITIONAL_OR_KEYWORD,
                                   default=None))
 
         self.call_sig = Signature(args)
@@ -68,6 +70,8 @@ class _UnifiAPICall:
         self._method = method
 
     def _build_url(self, client, path_arg):
+        if not client.site:
+            raise UnifiAPIError("No site specified for site-specific call")
         return "https://{host}:{port}/api/s/{site}/{endpoint}{path}".format(
             host=client.host, port=client.port, site=client.site,
             endpoint=self._endpoint,
