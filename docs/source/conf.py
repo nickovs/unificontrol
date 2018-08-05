@@ -16,6 +16,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
 
+import unificontrol
 
 # -- Project information -----------------------------------------------------
 
@@ -23,10 +24,10 @@ project = 'unificontrol'
 copyright = '2018, Nicko van Someren'
 author = 'Nicko van Someren'
 
-# The short X.Y version
-version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.2.2'
+release = unificontrol.__version__
+# The short X.Y version
+version = ".".join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
@@ -40,7 +41,6 @@ release = '0.2.2'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-#    'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
 ]

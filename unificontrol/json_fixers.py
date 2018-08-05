@@ -11,11 +11,11 @@ EMAIL_RE = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
 
 # Ensure messages with notes have the 'noted' flag set
 def fix_note_noted(json):
-    if 'note' in json:
-        if json['note']:
-            json['noted'] = True
-        else:
-            del json['note']
+    if 'note' in json and json['note']:
+        json['noted'] = True
+    else:
+        del json['note']
+        json['noted'] = False        
     return json
 
 # Arguments for user creation sit deeper in the JSON structure.
@@ -53,6 +53,13 @@ def fix_start_7days(json):
 # Fix start to 1 year before end
 def fix_start_1year(json):
     return fix_start_delta(json, 365 * 24 * 3600)
+
+# Adjust start and end times to be in milliseconds rather than seconds
+def fix_times_as_ms(json):
+    if 'start' in json:
+        json['start'] = int(json['start'] * 1000)
+    if 'end' in json:
+        json['end'] = int(json['end'] * 1000)
 
 # Ensure that requested attributes include the 'time' attribute
 def fix_ensure_time_attrib(json):
