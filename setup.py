@@ -1,17 +1,23 @@
 # Setup file for unificontrol
 import setuptools
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+import unificontrol
+
+with open("README.rst", "r") as fh:
+    desc_lines = fh.readlines()
+    stops = [i for i,l in enumerate(desc_lines) if "PyPI STOP" in l]
+    if stops:
+        desc_lines = desc_lines[:stops[0]]
+    long_description = "".join(desc_lines)
 
 setuptools.setup(
     name="unificontrol",
-    version="0.2.1",
+    version=unificontrol.__version__,
     author="Nicko van Someren",
     author_email="nicko@nicko.org",
     description="Secure access to Ubiquiti Unifi network controllers",
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     url="https://github.com/nickovs/unificontrol",
     packages=setuptools.find_packages(),
     classifiers=(

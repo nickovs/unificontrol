@@ -36,7 +36,7 @@ from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list
                           fix_end_now, fix_start_12hours, fix_start_7days, fix_start_1year,
                           fix_ensure_time_attrib, fix_constants, fix_arg_names,
                           fix_enforce_values, fix_locate_ap_cmd, fix_check_email,
-                          fix_admin_permissions)
+                          fix_admin_permissions, fix_times_as_ms)
 from .pinned_requests import PinningHTTPSAdapter
 
 #: A tag to indicate that the client should fetch the server's SSL certificate
@@ -116,17 +116,17 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     @property
     def host(self):
-        """(Property) Host name of contoller"""
+        """str: Host name of contoller"""
         return self._host
 
     @property
     def port(self):
-        """(Property) Port for accessing controller"""
+        """str: Port for accessing controller"""
         return self._port
 
     @property
     def site(self):
-        """(Writable property) Identifier of site being managed"""
+        """str: Identifier of site being managed"""
         return self._site
 
     @site.setter
@@ -146,8 +146,8 @@ class UnifiClient(metaclass=MetaNameFixer):
         """Log in to Unifi controller
 
         Args:
-            username (str): optional user name for admin account
-            password (str): optional password for admin account
+            username (str): `optional` user name for admin account
+            password (str): `optional` password for admin account
 
         The username and password arguments are optional if they were provided
         when the client was created.
@@ -168,10 +168,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         Args:
             mac (str): MAC address of the guest client to be authorized
             minutes (int): duration for which the client is authorised
-            up (int): optional upstream bandwidth limit in Kb/sec
-            down (int): optional downstream bandwidth limit in Kb/sec
-            MBytes (int): optional total data volume limit in megabytes
-            ap_mac (str): optional MAC address of the access point to
+            up (int): `optional` upstream bandwidth limit in Kb/sec
+            down (int): `optional` downstream bandwidth limit in Kb/sec
+            MBytes (int): `optional` total data volume limit in megabytes
+            ap_mac (str): `optional` MAC address of the access point to
                 which the client will attach
         """,
         "cmd/stamgr",
@@ -188,7 +188,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         """Unauthorize a guest client device
 
         Args:
-            mac (str): MAC address of guest client the unauthorize
+            mac (str): MAC address of guest client to unauthorize
         """,
         "cmd/stamgr",
         rest_command="unauthorize-guest",
@@ -196,28 +196,44 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     reconnect_client = UnifiAPICall(
-        "Force reconnection of a client device",
+        """Force reconnection of a client device
+
+        Args:
+            mac (str): MAC address of guest client to reconnect
+        """,
         "cmd/stamgr",
         rest_command="kick-sta",
         json_args=["mac"],
         )
 
     block_client = UnifiAPICall(
-        "Block a client device",
+        """Block a client device
+
+        Args:
+            mac (str): MAC address of guest client to block
+        """,
         "cmd/stamgr",
         rest_command="block-sta",
         json_args=["mac"],
         )
 
     unblock_client = UnifiAPICall(
-        "Unblock a client device",
+        """Unblock a client device
+
+        Args:
+            mac (str): MAC address of guest client to unblock
+        """,
         "cmd/stamgr",
         rest_command="unblock-sta",
         json_args=["mac"],
         )
 
     forget_client = UnifiAPICall(
-        "Forget a client device",
+        """Forget a client device
+
+        Args:
+            mac (str): MAC address of guest client to forget
+        """,
         "cmd/stamgr",
         rest_command="forget-sta",
         json_args=["macs"],
@@ -225,7 +241,14 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     create_client = UnifiAPICall(
-        "Creat a new user/client device",
+        """Creat a new user/client device
+
+        Args:
+            mac (str): MAC address of new client
+            usergroup_id (str): ``_id`` value for the user group for the client
+            name (str): `optional` name for the new client
+            note (str): `optional` note to attach to the new client
+        """,
         "group/user",
         json_args=["mac",
                    "usergroup_id",
@@ -235,7 +258,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     set_client_note = UnifiAPICall(
-        "Add, modify or remove a note on a client device",
+        """Add, modify or remove a note on a client device
+
+        Args:
+            user_id (str): ``_id`` value of the user for which the note is set
+            note (str): Note to attach, or None to remove note
+        """,
         "upd/user",
         path_arg_name="user_id",
         path_arg_optional=False,
@@ -245,7 +273,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     set_client_name = UnifiAPICall(
-        "Add, modify or remove a name on a client device",
+        """Add, modify or remove a name of a client device
+
+        Args:
+            user_id (str): ``_id`` value of the user for which the name is set
+            name (str): name to attach, or None to remove name
+        """,
         "upd/user",
         path_arg_name="user_id",
         path_arg_optional=False,
@@ -256,119 +289,228 @@ class UnifiClient(metaclass=MetaNameFixer):
     # Functions for retreiving statistics
 
     stat_5minutes_site = UnifiAPICall(
-        "5 minutes site stats method",
+        """Fetch site statistics with 5 minute granularity
+
+        Args:
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 12 hours before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/5minutes.site",
         json_args=[('start', None),
                    ('end', None),
                    ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_12hours,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_hourly_site = UnifiAPICall(
-        "Hourly site stats method",
+        """Fetch site statistics with 1 hour granularity
+
+        Args:
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 7 days before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/hourly.site",
         json_args=[('start', None),
                    ('end', None),
                    ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_7days,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_daily_site = UnifiAPICall(
-        "Daily site stats method",
+        """Fetch site statistics with 1 day granularity
+
+        Args:
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 1 year before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/daily.site",
         json_args=[('start', None),
                    ('end', None),
                    ('attrs', _DEFAULT_SITE_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_1year,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_5minutes_aps = UnifiAPICall(
-        "5 minutes stats method for a single access point or all access points",
+        """Fetch access point statistics with 5 minute granularity
+
+        Args:
+            mac (str): `optional` MAC access of single AP for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 12 hours before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/5minutes.ap",
-        json_args=[('start', None),
+        json_args=[('mac', None),
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('attrs', _DEFAULT_AP_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_12hours,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_hourly_aps = UnifiAPICall(
-        "Hourly stats method for a single access point or all access points",
+        """Fetch access point statistics with 1 hour granularity
+
+        Args:
+            mac (str): `optional` MAC access of single AP for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 7 yays before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/hourly.ap",
-        json_args=[('start', None),
+        json_args=[('mac', None),
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('attrs', _DEFAULT_AP_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_7days,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_daily_aps = UnifiAPICall(
-        "Daily stats method for a single access point or all access points",
+        """Fetch access point statistics with 1 day granularity
+
+        Args:
+            mac (str): `optional` MAC access of single AP for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 1 year before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/daily.ap",
-        json_args=[('start', None),
-                   ('end', None),
-                   ('mac', None),
+        json_args=[('mac', None),
+                   ('start', None),
+                   ('end', None),                   
                    ('attrs', _DEFAULT_AP_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_1year,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_5minutes_user = UnifiAPICall(
-        "5 minutes stats method for a single user/client device",
+        """Fetch client device statistics with 5 minute granularity
+
+        Args:
+            mac (str): MAC access of client device for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 12 hours before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/5minutes.user",
-        json_args=[('start', None),
+        json_args=['mac',
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('attrs', _DEFAULT_USER_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_12hours,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_hourly_user = UnifiAPICall(
-        "Hourly stats method for a a single user/client device",
+        """Fetch client device statistics with 1 hour granularity
+
+        Args:
+            mac (str): MAC access of client device for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 7 days before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/hourly.user",
-        json_args=[('start', None),
+        json_args=['mac',
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('attrs', _DEFAULT_USER_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_7days,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_daily_user = UnifiAPICall(
-        "Daily stats method for a single user/client device",
+        """Fetch client device statistics with 1 day granularity
+
+        Args:
+            mac (str): MAC access of client device for which to fetch statistics
+            start (int): `optional` start of reporting period, as seconds in the Unix
+                epoch. If not present defaults to 1 year before the end time
+            end (int): `optional` end of reporting period, as seconds in the Unix epoch.
+                If not present defaults to the current time.
+            attrs (list): `optional` list of statistics to return
+        Returns:
+            List of dictionaries of statistics
+        """,
         "stat/report/daily.user",
-        json_args=[('start', None),
+        json_args=['mac',
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('attrs', _DEFAULT_USER_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_1year,
-                  fix_ensure_time_attrib],
+                  fix_ensure_time_attrib,
+                  fix_times_as_ms],
         )
 
     stat_sessions = UnifiAPICall(
-        "Show all login sessions",
+        "Show login sessions",
         "stat/session",
-        json_args=[('start', None),
+        json_args=[('mac', None),
+                   ('start', None),
                    ('end', None),
-                   ('mac', None),
                    ('type', 'all')],
         json_fix=[fix_end_now,
-                  fix_start_7days],
+                  fix_start_7days,
+                  fix_enforce_values({'type':['all', 'guest', 'user']})],
         )
 
     stat_sta_sessions_latest = UnifiAPICall(
@@ -429,9 +571,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         method="PUT",
         )
 
-    ### FIX ME: Does the JSON in this call need the group_id as _id as
-    ### well having it in the path?
-
+    # FIXME: Is the site ID required here, or only needed if you want to change it?
     edit_usergroup = UnifiAPICall(
         "Update user group",
         "rest/usergroup",
@@ -476,11 +616,23 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_devices = UnifiAPICall(
-        "List managed devices on this site",
-        "stat/devices",
+        """List details of or or more managed device on this site
+
+        Args:
+            device_mac (str): `optional` MAC address of device on which to fetch details
+
+        Returns:
+            list of dictionaries of device details.
+        """,
+        "stat/device",
         path_arg_name="device_mac",
         )
 
+    list_devices_basic = UnifiAPICall(
+        """List basic information about managed devices""",
+        "stat/device-basic",
+        )
+    
     list_tags = UnifiAPICall(
         "List known device tags",
         "rest/tag",
