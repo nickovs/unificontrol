@@ -104,9 +104,10 @@ class _UnifiAPICallNoSite(_UnifiAPICall):
     # pylint: disable=too-few-public-methods
     "A representation of a single API call common to all sites"
     def _build_url(self, client, path_arg):
-        return "https://{host}:{port}/api/{endpoint}{path}".format(
+        endpoint= self._endpoint if self._endpoint.startswith('/') else '/api/' + self._endpoint
+        return "https://{host}:{port}{endpoint}{path}".format(
             host=client.host, port=client.port,
-            endpoint=self._endpoint,
+            endpoint=endpoint,
             path="/" + path_arg if path_arg else "")
 
 # We want to have proper introspection and documentation for our

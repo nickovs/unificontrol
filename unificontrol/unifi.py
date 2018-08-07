@@ -232,7 +232,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         """Forget a client device
 
         Args:
-            mac (str): MAC address of guest client to forget
+            mac (str): One or a litst of MAC addresses of guest clients to forget
+
+        Note:
+            Requires version 5.9 of the controller or later.
+            
         """,
         "cmd/stamgr",
         rest_command="forget-sta",
@@ -616,7 +620,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_devices = UnifiAPICall(
-        """List details of or or more managed device on this site
+        """List details of one or more managed device on this site
 
         Args:
             device_mac (str): `optional` MAC address of device on which to fetch details
@@ -680,38 +684,30 @@ class UnifiClient(metaclass=MetaNameFixer):
         json_args=['desc'],
         )
 
-    #### FIX ME: Need better doc string for setting
     set_site_country = UnifiAPICall(
         "Set site country",
         "rest/setting/country",
-        path_arg_name="country_id",
         json_body_name="setting",
         method="PUT",
         )
 
-    #### FIX ME: Need better doc string for setting
     set_site_locale = UnifiAPICall(
         "Set site locale",
         "rest/setting/locale",
-        path_arg_name="locale_id",
         json_body_name="setting",
         method="PUT",
         )
 
-    #### FIX ME: Need better doc string for setting
     set_site_snmp = UnifiAPICall(
         "Set site snmp",
         "rest/setting/snmp",
-        path_arg_name="snmp_id",
         json_body_name="setting",
         method="PUT",
         )
 
-    #### FIX ME: Need better doc string for setting
     set_site_mgmt = UnifiAPICall(
         "Set site mgmt",
         "rest/setting/mgmt",
-        path_arg_name="gmt_id",
         json_body_name="setting",
         method="PUT",
         )
@@ -719,7 +715,6 @@ class UnifiClient(metaclass=MetaNameFixer):
     set_site_guest_access = UnifiAPICall(
         "Set site guest access",
         "rest/setting/guest_access",
-        path_arg_name="guest_access_id",
         json_body_name="setting",
         method="PUT",
         )
@@ -727,7 +722,6 @@ class UnifiClient(metaclass=MetaNameFixer):
     set_site_ntp = UnifiAPICall(
         "Set site ntp",
         "rest/setting/ntp",
-        path_arg_name="ntp_id",
         json_body_name="setting",
         method="PUT",
         )
@@ -735,7 +729,6 @@ class UnifiClient(metaclass=MetaNameFixer):
     set_site_connectivity = UnifiAPICall(
         "Set site connectivity",
         "rest/setting/connectivity",
-        path_arg_name="connectivity_id",
         json_body_name="setting",
         method="PUT",
     )
@@ -784,7 +777,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
     
     revoke_admin = UnifiAPICall(
-        "Revoke an admin",
+        "Revoke an admin user",
         "cmd/sitemgr",
         rest_command="revoke-admin",
         json_args=['admin'],
@@ -796,13 +789,14 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     stat_sysinfo = UnifiAPICall(
-        "Show sysinfo",
+        "Show general system information",
         "stat/sysinfo",
         )
 
     stat_status = UnifiAPICallNoSite(
         "Get controller status",
-        "status",
+        # Note the leading / since this is at the root level
+        "/status",
         )
 
     list_self = UnifiAPICall(
@@ -866,8 +860,13 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_portforward_stats = UnifiAPICall(
-        "List port forwarding stats",
+        "List port forwarding configuation and statistics",
         "stat/portforward",
+        )
+
+    list_vpn_stats =  UnifiAPICall(
+        "List VPN users and statistics",
+        "stat/remoteuservpn",
         )
 
     list_dpi_stats = UnifiAPICall(
@@ -876,7 +875,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_current_channels = UnifiAPICall(
-        "List current channels",
+        "List currently available channels",
         "stat/current-channel",
         )
 
@@ -908,6 +907,7 @@ class UnifiClient(metaclass=MetaNameFixer):
     list_settings = UnifiAPICall(
         "List site settings",
         "get/setting",
+        path_arg_name='key',
         )
 
     adopt_device = UnifiAPICall(
@@ -961,7 +961,11 @@ class UnifiClient(metaclass=MetaNameFixer):
         "upd/device",
         path_arg_name="ap_id",
         path_arg_optional=False,
-        json_args=['radio_table', 'channel', 'ht', 'tx_power_mode', 'tx_power'],
+        json_args=['radio_table',
+                   'channel',
+                   'ht',
+                   'tx_power_mode',
+                   'tx_power'],
         )
 
     rename_ap = UnifiAPICall(

@@ -12,15 +12,18 @@ include:
 - Python 3 only, since it's the way of the future.
 
 
+This is a reference to :py:meth:`login() <unificontrol.UnifiClient.login>` to
+check what works.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    Introduction <introduction>
-   The unificontrol API <API>
+   API details <API>
    ssl_self_signed
+   Adding to the API <extending_API>
 
-         
 Indices and tables
 ==================
 
