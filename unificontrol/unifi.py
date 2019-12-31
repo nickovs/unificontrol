@@ -570,6 +570,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name="client_mac",
         )
 
+    list_configured_clients = UnifiAPICall(
+        "List configured client devices, or details on a single MAC address",
+        "rest/user",
+        path_arg_name="client_mac",
+        )
+
     get_client_details = UnifiAPICall(
         "Get details about a client",
         "stat/user",
