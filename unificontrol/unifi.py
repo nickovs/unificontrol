@@ -290,6 +290,21 @@ class UnifiClient(metaclass=MetaNameFixer):
         method="PUT",
         )
 
+    set_client_fixed_ip = UnifiAPICall(
+        """Add, modify or remove a fixed ip of a client device
+
+        Args:
+            user_id (str): ``_id`` value of the user for which the name is set
+            fixed_ip (str): IP to attach, or None to remove IP
+            network_id (str): network to attach
+        """,
+        "rest/user",
+        path_arg_name="user_id",
+        path_arg_optional=False,
+        json_args=["fixed_ip", "network_id"],
+        method="PUT",
+        )
+
     # Functions for retreiving statistics
 
     stat_5minutes_site = UnifiAPICall(
