@@ -73,7 +73,7 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     def __init__(self, host="localhost", port=8443,
                  username="admin", password=None, site="default",
-                 cert=FETCH_CERT):                 
+                 cert=FETCH_CERT):
         self._host = host
         self._port = port
         self._user = username
@@ -236,7 +236,7 @@ class UnifiClient(metaclass=MetaNameFixer):
 
         Note:
             Requires version 5.9 of the controller or later.
-            
+
         """,
         "cmd/stamgr",
         rest_command="forget-sta",
@@ -425,7 +425,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         "stat/report/daily.ap",
         json_args=[('mac', None),
                    ('start', None),
-                   ('end', None),                   
+                   ('end', None),
                    ('attrs', _DEFAULT_AP_ATTRIBUTES)],
         json_fix=[fix_end_now,
                   fix_start_1year,
@@ -636,7 +636,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         """List basic information about managed devices""",
         "stat/device-basic",
         )
-    
+
     list_tags = UnifiAPICall(
         "List known device tags",
         "rest/tag",
@@ -775,7 +775,7 @@ class UnifiClient(metaclass=MetaNameFixer):
                   fix_admin_permissions,
                   fix_check_email('email')],
         )
-    
+
     revoke_admin = UnifiAPICall(
         "Revoke an admin user",
         "cmd/sitemgr",

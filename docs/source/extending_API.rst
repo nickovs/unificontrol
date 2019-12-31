@@ -32,7 +32,7 @@ Most of the API calls in the :class:`unificontrol.UnifiClient` class are impleme
 In this example we only pass the two required parameters to `UnifiAPICall`, a documentation string and part of the path to the HTTP endpoint for th API call on the server. Of course for many API calls there are parameters that need to be passed. For instance, you can fetch details about managed Unifi devices using the :meth:`list_devices <unificontrol.UnifiClient.list_devices>` method and in this case you may optionally specify the MAC address of the managed device on the URL used to connect to the controller. When that is the case we can specify a name to give to a parameter for the extra componenet to be added to the URL in this case ``device_mac``:
 
 .. code:: python
-          
+
     list_devices = UnifiAPICall(
         """List details of one or more managed device on this site
 
@@ -120,5 +120,3 @@ JSON fix-up methods
 
 .. automodule:: unificontrol.json_fixers
    :members:
-      
-

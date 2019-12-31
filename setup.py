@@ -1,7 +1,18 @@
 # Setup file for unificontrol
 import setuptools
+import re
 
-import unificontrol
+version_line_finder = re.compile(r'__version__\s*=\s*"(\d+\.\d+(\.\d+)?)"')
+
+with open("unificontrol/__init__.py", "r") as fh:
+    for line in fh:
+        match = version_line_finder.match(line)
+        if match:
+            __version__ = match.groups()[0]
+            break
+    else:
+        print("WARNING: Version info missing from module")
+        __version__ = "0.0.0"
 
 with open("README.rst", "r") as fh:
     desc_lines = fh.readlines()
@@ -12,7 +23,7 @@ with open("README.rst", "r") as fh:
 
 setuptools.setup(
     name="unificontrol",
-    version=unificontrol.__version__,
+    version=__version__,
     author="Nicko van Someren",
     author_email="nicko@nicko.org",
     description="Secure access to Ubiquiti Unifi network controllers",

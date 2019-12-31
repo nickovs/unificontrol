@@ -19,7 +19,7 @@ def fix_note_noted(json):
         json['noted'] = True
     else:
         del json['note']
-        json['noted'] = False        
+        json['noted'] = False
     return json
 
 # Arguments for user creation sit deeper in the JSON structure.

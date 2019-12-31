@@ -20,7 +20,7 @@ devices or other items are referred to by an ID value. In most cases these are 2
 character unique hexadecimal strings which bear no relation to the visible names
 of these objects. In these cases you will need to use the various ``list_...``
 methods to get lists of the available objects and use the ``_id`` attribute from the
-object you need. 
+object you need.
 
 
 Settings dictionaries
@@ -51,7 +51,7 @@ Constants
 .. autoclass:: unificontrol.RadiusTunnelType
    :members:
    :member-order: bysource
-   
+
 .. autoclass:: unificontrol.RadiusTunnelMediumType
    :members:
    :member-order: bysource
