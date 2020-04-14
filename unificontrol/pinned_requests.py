@@ -6,6 +6,7 @@
 import base64
 import tempfile
 import hashlib
+import os
 
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.poolmanager import PoolManager
@@ -55,8 +56,11 @@ class PinningHTTPSAdapter(HTTPAdapter):
         for self-signed certs)"""
         if ca_cert is None:
             ca_cert = cert
-        # The temporary file will be cleaned up when this adaptor is garbage collected
-        self._ca_cert_temp = tempfile.NamedTemporaryFile(mode="w", suffix=".pem")
+        # The temporary file will be cleaned up when this adaptor is garbage collected, except
+        # on Windows where this behaviour prevents the ssl library from opening the file
+        self._ca_cert_temp = tempfile.NamedTemporaryFile(mode="w",
+                                                         suffix=".pem",
+                                                         delete=(os.name != 'nt'))
         self._ca_cert_temp.write(_cert_as_PEM(ca_cert))
         self._ca_cert_temp.flush()
         self._cert_fingerprint = _cert_fingerprint(cert)
@@ -75,3 +79,9 @@ class PinningHTTPSAdapter(HTTPAdapter):
     def cert_verify(self, conn, url, verify, cert):
         """Force verification to be against our issuing authority"""
         super(PinningHTTPSAdapter, self).cert_verify(conn, url, self._ca_cert_temp.name, cert)
+
+    def __del__(self):
+        """ delete the temporary certificate file if it will not be automatically removed """
+        if (not self._ca_cert_temp.delete and os.path.isfile(self._ca_cert_temp.name)):
+            self._ca_cert_temp.close()
+            os.unlink(self._ca_cert_temp.name)
