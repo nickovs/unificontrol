@@ -6,6 +6,8 @@
 
 from inspect import Signature, Parameter
 
+from .exceptions import UnifiAPIError
+
 POSITIONAL_ONLY = Parameter.POSITIONAL_ONLY
 POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD
 KEYWORD_ONLY = Parameter.KEYWORD_ONLY
