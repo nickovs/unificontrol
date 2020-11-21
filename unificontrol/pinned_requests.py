@@ -3,6 +3,7 @@
 
 # pylint: disable=invalid-name, import-error
 
+import os
 import base64
 import tempfile
 import hashlib
@@ -56,11 +57,17 @@ class PinningHTTPSAdapter(HTTPAdapter):
         if ca_cert is None:
             ca_cert = cert
         # The temporary file will be cleaned up when this adaptor is garbage collected
-        self._ca_cert_temp = tempfile.NamedTemporaryFile(mode="w", suffix=".pem")
+        self._ca_cert_temp = tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False)
         self._ca_cert_temp.write(_cert_as_PEM(ca_cert))
-        self._ca_cert_temp.flush()
+        self._ca_cert_temp.close()
         self._cert_fingerprint = _cert_fingerprint(cert)
         super(PinningHTTPSAdapter, self).__init__(**kwargs)
+
+    def __del__(self):
+        try:
+            os.remove(self._ca_cert_temp.name)
+        except OSError:
+            pass
 
     def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
         """initialise the PoolManager with the pinned fingerprint"""
