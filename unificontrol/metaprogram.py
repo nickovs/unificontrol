@@ -94,7 +94,7 @@ class _UnifiAPICall:
                     arg_name, _ = arg_name
                 if arg_name not in bound.arguments:
                     raise TypeError("Argument {} is required".format(arg_name))
-                if bound.arguments[arg_name]:
+                if bound.arguments[arg_name] is not None:
                     rest_dict[arg_name] = bound.arguments[arg_name]
         if self._fixes:
             for fix in self._fixes:
