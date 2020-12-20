@@ -931,6 +931,20 @@ class UnifiClient(metaclass=MetaNameFixer):
         path_arg_name='key',
         )
 
+    enable_portforwarding_rule = UnifiAPICall(
+        """Enable or disable a port forwarding rule
+
+        Args:
+            pfr_id (str): ``_id`` value of the portforwarding rule
+            enabled (bool): true to enable the rule, false to disable the rule
+        """,
+        "rest/portforward",
+        path_arg_name="pfr_id",
+        path_arg_optional=False,
+        json_args=["enabled"],
+        method="PUT",
+        )
+
     adopt_device = UnifiAPICall(
         "Adopt a device to the selected site",
         "cmd/devmgr",
