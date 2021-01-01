@@ -30,6 +30,10 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url="https://github.com/nickovs/unificontrol",
+    project_urls={
+        'Documentation': 'https://unificontrol.readthedocs.io/',
+        'Issue Tracker': 'https://github.com/nickovs/unificontrol/issues'
+    },
     packages=setuptools.find_packages(),
     classifiers=(
         "Development Status :: 4 - Beta",
