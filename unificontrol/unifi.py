@@ -585,7 +585,8 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     list_usergroups = UnifiAPICall(
         "List user groups",
-        "list/usergroup")
+        "list/usergroup",
+        )
 
     set_usergroup = UnifiAPICall(
         "Set the user group for a client",
@@ -627,7 +628,8 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     list_health = UnifiAPICall(
         "List health metrics",
-        "stat/health")
+        "stat/health",
+        )
 
     #### Should probably support '?scale=5minutes'
     list_dashboard = UnifiAPICall(
@@ -654,7 +656,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     list_devices_basic = UnifiAPICall(
-        """List basic information about managed devices""",
+        """List basic information about all managed devices""",
         "stat/device-basic",
         )
 
@@ -1028,6 +1030,7 @@ class UnifiClient(metaclass=MetaNameFixer):
     list_networkconf = UnifiAPICall(
         "List network settings",
         "rest/networkconf",
+        path_arg_name="network_id",
         )
 
     #### FIX ME: Need better doc string for setting
@@ -1202,11 +1205,13 @@ class UnifiClient(metaclass=MetaNameFixer):
     list_radius_profiles = UnifiAPICall(
         "List Radius profiles",
         "rest/radiusprofile",
+        path_arg_name="profile_id",
         )
 
     list_radius_accounts = UnifiAPICall(
         "List Radius user accounts",
         "rest/account",
+        path_arg_name="account_id",
         )
 
     #### FIX ME: This needs documentation of the tunnel types
