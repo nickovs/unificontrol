@@ -64,7 +64,7 @@ class PinningHTTPSAdapter(HTTPAdapter):
         self._ca_cert_temp.write(_cert_as_PEM(ca_cert))
         self._ca_cert_temp.flush()
         self._cert_fingerprint = _cert_fingerprint(cert)
-        super(PinningHTTPSAdapter, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
         """initialise the PoolManager with the pinned fingerprint"""
@@ -78,7 +78,7 @@ class PinningHTTPSAdapter(HTTPAdapter):
 
     def cert_verify(self, conn, url, verify, cert):
         """Force verification to be against our issuing authority"""
-        super(PinningHTTPSAdapter, self).cert_verify(conn, url, self._ca_cert_temp.name, cert)
+        super().cert_verify(conn, url, self._ca_cert_temp.name, cert)
 
     def __del__(self):
         """ delete the temporary certificate file if it will not be automatically removed """

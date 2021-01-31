@@ -23,9 +23,6 @@
 
 # Standard libraries
 import ssl
-import tempfile
-import atexit
-import os
 
 # Dependencies
 import requests
@@ -52,6 +49,27 @@ _DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
 X_PASSWORD_FIX=fix_arg_names({"password":"x_passowrd"})
 
+#: The UnifiClient should attempt to guess the type of network server
+UNIFI_SERVER_GUESS = "GUESS"
+#: The original server code on a separate server or on a CloudKey
+UNIFI_SERVER_CLASSIC = "CLASSIC"
+#: Newer server code in a Unifi DreamMachine
+UNIFI_SERVER_UDM = "UDM"
+
+
+def _guess_server_and_port(host, server_hint, port):
+    # Attempt to guess what generation of Unifi network controller is present and
+    # on what port it should be reached
+
+    if server_hint == UNIFI_SERVER_GUESS:
+        raise NotImplementedError("Auto-detection is not yet available ({})".format(host))
+    if server_hint == UNIFI_SERVER_CLASSIC:
+        port = 8443
+    elif server_hint == UNIFI_SERVER_UDM:
+        port = 443
+
+    return server_hint, port
+
 
 # The main Unifi client object
 
@@ -71,11 +89,15 @@ class UnifiClient(metaclass=MetaNameFixer):
             and pin that cert for future accesses.
     """
 
-    def __init__(self, host="localhost", port=8443,
+    def __init__(self, host="localhost", port=None,
                  username="admin", password=None, site="default",
-                 cert=FETCH_CERT):
+                 cert=FETCH_CERT, server_type=UNIFI_SERVER_CLASSIC):
+        if port is None or server_type == UNIFI_SERVER_GUESS:
+            server_type, port = _guess_server_and_port(host, server_type, port)
+
         self._host = host
         self._port = port
+        self._server_type = server_type
         self._user = username
         self._password = password
         self._site = site
@@ -89,7 +111,8 @@ class UnifiClient(metaclass=MetaNameFixer):
             adaptor = PinningHTTPSAdapter(cert)
             self._session.mount("https://{}:{}".format(host, port), adaptor)
 
-    def _execute(self, url, method, rest_dict, need_login=True):
+    def _execute(self, url, method, rest_dict, need_login=True, reply_meta=False):
+
         request = requests.Request(method, url, json=rest_dict)
         ses = self._session
 
@@ -100,19 +123,21 @@ class UnifiClient(metaclass=MetaNameFixer):
             try:
                 self.login()
             except UnifiTransportError:
+                # pylint: disable=raise-missing-from,no-else-raise
                 if self._user and self._password:
                     raise UnifiLoginError("Invalid credentials")
                 else:
                     raise UnifiLoginError("Need user name and password to log in")
             resp = ses.send(ses.prepare_request(request))
 
-        if resp.ok:
-            response = resp.json()
-            if 'meta' in response and response['meta']['rc'] != 'ok':
-                raise UnifiAPIError(response['meta']['msg'])
-            return response['data']
-        else:
+        if not resp.ok:
             raise UnifiTransportError("{}: {}".format(resp.status_code, resp.reason))
+
+        response = resp.json()
+        if 'meta' in response and response['meta']['rc'] != 'ok':
+            raise UnifiAPIError(response['meta']['msg'])
+        return response['meta'] if reply_meta else response['data']
+
 
     @property
     def host(self):
@@ -123,6 +148,25 @@ class UnifiClient(metaclass=MetaNameFixer):
     def port(self):
         """str: Port for accessing controller"""
         return self._port
+
+    @property
+    def server_type(self):
+        """str: Type of controller server"""
+        return self._server_type
+
+    @property
+    def url_base(self):
+        """str: Base URL for accesing the server"""
+        return "https://{host}:{port}".format(
+            host=self._host,
+            port=self._port,
+            )
+
+    @property
+    def api_base(self):
+        """str: URL for API access"""
+        proxy="/proxy/network" if self._server_type == UNIFI_SERVER_UDM else ""
+        return self.url_base + proxy + "/api"
 
     @property
     def site(self):
@@ -138,7 +182,10 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     _login = UnifiAPICallNoSite(
         "raw login command",
-        "login",
+        {
+            UNIFI_SERVER_CLASSIC: "login",
+            UNIFI_SERVER_UDM: "/api/auth/login",
+        },
         json_args=["username", "password"],
         need_login=False)
 
@@ -157,7 +204,10 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     logout = UnifiAPICallNoSite(
         "Log out from Unifi controller",
-        "logout",
+        {
+            UNIFI_SERVER_CLASSIC: "logout",
+            UNIFI_SERVER_UDM: "/api/auth/logout",
+        },
         need_login=False)
 
     # Functions for dealing with guest and client devices
@@ -820,6 +870,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         "Get controller status",
         # Note the leading / since this is at the root level
         "/status",
+        reply_meta=True,
         )
 
     list_self = UnifiAPICall(

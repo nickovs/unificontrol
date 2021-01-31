@@ -32,13 +32,14 @@ class _UnifiAPICall:
                  path_arg_name=None, path_arg_optional=True,
                  json_args=None, json_body_name=None, json_fix=None,
                  rest_command=None, method=None,
-                 need_login=True):
+                 need_login=True, reply_meta=False):
         self._endpoint = endpoint
         self._path_arg_name = path_arg_name
         self._json_args = json_args
         self._json_body_name = json_body_name
         self._rest = rest_command
         self._need_login = need_login
+        self._reply_meta = reply_meta
         if not isinstance(json_fix, (list, tuple, type(None))):
             json_fix = [json_fix]
         self._fixes = json_fix
@@ -59,7 +60,7 @@ class _UnifiAPICall:
                 args.append(Parameter(arg_name, POSITIONAL_OR_KEYWORD, default=default))
         if json_body_name:
             args.append(Parameter(json_body_name,
-                                  POSITIONAL_OR_KEYWORD if path_arg_optional else POSITIONAL_OR_KEYWORD,
+                                  POSITIONAL_OR_KEYWORD,
                                   default=None))
 
         self.call_sig = Signature(args)
@@ -74,10 +75,15 @@ class _UnifiAPICall:
     def _build_url(self, client, path_arg):
         if not client.site:
             raise UnifiAPIError("No site specified for site-specific call")
-        return "https://{host}:{port}/api/s/{site}/{endpoint}{path}".format(
-            host=client.host, port=client.port, site=client.site,
-            endpoint=self._endpoint,
-            path="/" + path_arg if path_arg else "")
+        endpoint=self._endpoint
+        if isinstance(endpoint, dict):
+            endpoint = endpoint[client.server_type]
+        return "{api_base}/s/{site}/{endpoint}{path}".format(
+            api_base=client.api_base,
+            site=client.site,
+            endpoint=endpoint,
+            path="/" + path_arg if path_arg else "",
+            )
 
     def __call__(self, *args, **kwargs):
         bound = self.call_sig.bind(*args, **kwargs)
@@ -100,17 +106,26 @@ class _UnifiAPICall:
             for fix in self._fixes:
                 rest_dict = fix(rest_dict)
         url = self._build_url(client, path_arg)
-        return client._execute(url, self._method, rest_dict, need_login=self._need_login)
+        return client._execute(url, self._method, rest_dict,
+                               need_login=self._need_login,
+                               reply_meta=self._reply_meta)
 
 class _UnifiAPICallNoSite(_UnifiAPICall):
     # pylint: disable=too-few-public-methods
     "A representation of a single API call common to all sites"
     def _build_url(self, client, path_arg):
-        endpoint= self._endpoint if self._endpoint.startswith('/') else '/api/' + self._endpoint
-        return "https://{host}:{port}{endpoint}{path}".format(
-            host=client.host, port=client.port,
-            endpoint=endpoint,
-            path="/" + path_arg if path_arg else "")
+        endpoint=self._endpoint
+        if isinstance(endpoint, dict):
+            endpoint = endpoint[client.server_type]
+
+        if endpoint.startswith('/'):
+            url = client.url_base + endpoint
+        else:
+            url = client.api_base + "/" + endpoint
+
+        if path_arg:
+            url += "/" + path_arg
+        return url
 
 # We want to have proper introspection and documentation for our
 # methods but for some reason we you can't set a __signature__

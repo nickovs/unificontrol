@@ -1,9 +1,10 @@
-""" Functions in the ``unificontrol.json_fixers`` module are fixers to fix up JSON objects before posting to
-the controller. This allows us to have cleaner function signatures
-when the underlying API is a bit verbose.
+""" Functions in the ``unificontrol.json_fixers`` module are fixers to
+fix up JSON objects before posting to the controller. This allows us
+to have cleaner function signatures when the underlying API is a bit
+verbose.
 
-All functions accept a JSON dictionary of existing attributes and return a modified
-dictionary, which may or may not be the same object.
+All functions accept a JSON dictionary of existing attributes and
+return a modified dictionary, which may or may not be the same object.
 """
 
 import time
@@ -87,7 +88,8 @@ def fix_arg_names(mapping):
 
     .. code:: python
 
-        json_fix = [fix_arg_names({'enable_sso':'for_sso'})] # Let the user write ``enable_sso`` when the API wants ``for_sso``
+        # Let the user write ``enable_sso`` when the API wants ``for_sso``
+        json_fix = [fix_arg_names({'enable_sso':'for_sso'})]
     """
     def arg_name_fixer(json):
         for key in mapping:

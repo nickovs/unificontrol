@@ -27,7 +27,8 @@ certificate pinning and interface introspection.
 
 __version__ = "0.2.9"
 
-from .unifi import UnifiClient, FETCH_CERT
+from .unifi import (UnifiClient, FETCH_CERT,
+                    UNIFI_SERVER_GUESS, UNIFI_SERVER_CLASSIC, UNIFI_SERVER_UDM)
 from .exceptions import UnifiError, UnifiAPIError, UnifiTransportError, UnifiLoginError
 from .constants import RadiusTunnelType, RadiusTunnelMediumType
 

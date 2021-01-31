@@ -1,3 +1,7 @@
+"""
+Constants for the unificontrol API
+"""
+
 from enum import Enum
 
 class RadiusTunnelType(Enum):
