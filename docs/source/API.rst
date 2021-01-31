@@ -55,3 +55,7 @@ Constants
 .. autoclass:: unificontrol.RadiusTunnelMediumType
    :members:
    :member-order: bysource
+
+.. autoclass:: unificontrol.UnifiServerType
+   :members:
+   :member-order: bysource

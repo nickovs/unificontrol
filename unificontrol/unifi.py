@@ -35,10 +35,12 @@ from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list
                           fix_enforce_values, fix_locate_ap_cmd, fix_check_email,
                           fix_admin_permissions, fix_times_as_ms)
 from .pinned_requests import PinningHTTPSAdapter
+from .constants import UnifiServerType
 
 #: A tag to indicate that the client should fetch the server's SSL certificate
 #: when it is created and then pin to that certificate.
 FETCH_CERT = "FETCH_CERT"
+
 
 # Default lists of stats to return for various stat calls
 _DEFAULT_SITE_ATTRIBUTES = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes',
@@ -49,23 +51,16 @@ _DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
 X_PASSWORD_FIX=fix_arg_names({"password":"x_passowrd"})
 
-#: The UnifiClient should attempt to guess the type of network server
-UNIFI_SERVER_GUESS = "GUESS"
-#: The original server code on a separate server or on a CloudKey
-UNIFI_SERVER_CLASSIC = "CLASSIC"
-#: Newer server code in a Unifi DreamMachine
-UNIFI_SERVER_UDM = "UDM"
-
 
 def _guess_server_and_port(host, server_hint, port):
     # Attempt to guess what generation of Unifi network controller is present and
     # on what port it should be reached
 
-    if server_hint == UNIFI_SERVER_GUESS:
+    if server_hint == UnifiServerType.GUESS:
         raise NotImplementedError("Auto-detection is not yet available ({})".format(host))
-    if server_hint == UNIFI_SERVER_CLASSIC:
+    if server_hint == UnifiServerType.CLASSIC:
         port = 8443
-    elif server_hint == UNIFI_SERVER_UDM:
+    elif server_hint == UnifiServerType.UDM:
         port = 443
 
     return server_hint, port
@@ -87,12 +82,14 @@ class UnifiClient(metaclass=MetaNameFixer):
             Pass ``None`` to use regular certificate verification or the
             constant ``FETCH_CERT`` to use the current certificate of the server
             and pin that cert for future accesses.
+        server_type (UnifiServerType): Type of server, either classic stand-alone
+            network serfver or the newer Unifi Dream Machine. Defaults to classic.
     """
 
     def __init__(self, host="localhost", port=None,
                  username="admin", password=None, site="default",
-                 cert=FETCH_CERT, server_type=UNIFI_SERVER_CLASSIC):
-        if port is None or server_type == UNIFI_SERVER_GUESS:
+                 cert=FETCH_CERT, server_type=UnifiServerType.CLASSIC):
+        if port is None or server_type == UnifiServerType.GUESS:
             server_type, port = _guess_server_and_port(host, server_type, port)
 
         self._host = host
@@ -165,7 +162,7 @@ class UnifiClient(metaclass=MetaNameFixer):
     @property
     def api_base(self):
         """str: URL for API access"""
-        proxy="/proxy/network" if self._server_type == UNIFI_SERVER_UDM else ""
+        proxy="/proxy/network" if self._server_type == UnifiServerType.UDM else ""
         return self.url_base + proxy + "/api"
 
     @property
@@ -183,8 +180,8 @@ class UnifiClient(metaclass=MetaNameFixer):
     _login = UnifiAPICallNoSite(
         "raw login command",
         {
-            UNIFI_SERVER_CLASSIC: "login",
-            UNIFI_SERVER_UDM: "/api/auth/login",
+            UnifiServerType.CLASSIC: "login",
+            UnifiServerType.UDM: "/api/auth/login",
         },
         json_args=["username", "password"],
         need_login=False)
@@ -205,8 +202,8 @@ class UnifiClient(metaclass=MetaNameFixer):
     logout = UnifiAPICallNoSite(
         "Log out from Unifi controller",
         {
-            UNIFI_SERVER_CLASSIC: "logout",
-            UNIFI_SERVER_UDM: "/api/auth/logout",
+            UnifiServerType.CLASSIC: "logout",
+            UnifiServerType.UDM: "/api/auth/logout",
         },
         need_login=False)
 

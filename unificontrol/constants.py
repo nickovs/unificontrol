@@ -37,3 +37,9 @@ class RadiusTunnelMediumType(Enum):
     DECNET     = 13 #: Decnet IV
     BANYAN     = 14 #: Banyan Vines
     E_164_NSAP = 15 #: E.164 with NSAP format subaddress
+
+class UnifiServerType(Enum):
+    """Values for the type of Unifi network controller in use"""
+    GUESS      = 0  #: The client should attempt to guess the server type
+    CLASSIC    = 1  #: A stand-along controller or a CloudKey
+    UDM        = 2  #: A controller on a DreamMachine or UDM Pro
