@@ -43,3 +43,9 @@ class UnifiServerType(Enum):
     GUESS      = 0  #: The client should attempt to guess the server type
     CLASSIC    = 1  #: A stand-along controller or a CloudKey
     UDM        = 2  #: A controller on a DreamMachine or UDM Pro
+
+class ReplyFormat(Enum):
+    """Identifiers for which part of the JSON result to return for an API call"""
+    RAW        = 0  #: Return the entire JSON reply body
+    DATA       = 1  #: Return the value for the 'data' key in the reply object
+    META       = 2  #: Return the value for the 'meta' key in the reply object

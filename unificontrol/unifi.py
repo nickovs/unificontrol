@@ -35,7 +35,7 @@ from .json_fixers import (fix_note_noted, fix_user_object_nesting, fix_macs_list
                           fix_enforce_values, fix_locate_ap_cmd, fix_check_email,
                           fix_admin_permissions, fix_times_as_ms)
 from .pinned_requests import PinningHTTPSAdapter
-from .constants import UnifiServerType
+from .constants import UnifiServerType, ReplyFormat
 
 #: A tag to indicate that the client should fetch the server's SSL certificate
 #: when it is created and then pin to that certificate.
@@ -100,16 +100,16 @@ class UnifiClient(metaclass=MetaNameFixer):
         self._site = site
         self._session = requests.session()
         self._exit_handler = None
+        self._https_adaptor = None
 
         if cert == FETCH_CERT:
             cert = ssl.get_server_certificate((host, port))
 
         if cert is not None:
-            adaptor = PinningHTTPSAdapter(cert)
+            self._https_adaptor = adaptor = PinningHTTPSAdapter(cert)
             self._session.mount("https://{}:{}".format(host, port), adaptor)
 
-    def _execute(self, url, method, rest_dict, need_login=True, reply_meta=False):
-
+    def _execute(self, url, method, rest_dict, need_login=True, reply_format=ReplyFormat.DATA):
         request = requests.Request(method, url, json=rest_dict)
         ses = self._session
 
@@ -133,7 +133,12 @@ class UnifiClient(metaclass=MetaNameFixer):
         response = resp.json()
         if 'meta' in response and response['meta']['rc'] != 'ok':
             raise UnifiAPIError(response['meta']['msg'])
-        return response['meta'] if reply_meta else response['data']
+
+        if reply_format == ReplyFormat.DATA:
+            response = response['data']
+        elif reply_format == ReplyFormat.META:
+            response = response['meta']
+        return response
 
 
     @property
@@ -184,7 +189,9 @@ class UnifiClient(metaclass=MetaNameFixer):
             UnifiServerType.UDM: "/api/auth/login",
         },
         json_args=["username", "password"],
-        need_login=False)
+        need_login=False,
+        reply_format=ReplyFormat.RAW,
+        )
 
     def login(self, username=None, password=None):
         """Log in to Unifi controller
@@ -196,6 +203,9 @@ class UnifiClient(metaclass=MetaNameFixer):
         The username and password arguments are optional if they were provided
         when the client was created.
         """
+        if self._https_adaptor:
+            self._https_adaptor.poolmanager.clear()
+
         self._login(username=username if username else self._user,
                     password=password if password else self._password)
 
@@ -205,7 +215,9 @@ class UnifiClient(metaclass=MetaNameFixer):
             UnifiServerType.CLASSIC: "logout",
             UnifiServerType.UDM: "/api/auth/logout",
         },
-        need_login=False)
+        need_login=False,
+        reply_format=ReplyFormat.RAW,
+        )
 
     # Functions for dealing with guest and client devices
 
@@ -867,7 +879,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         "Get controller status",
         # Note the leading / since this is at the root level
         "/status",
-        reply_meta=True,
+        reply_format=ReplyFormat.META,
         )
 
     list_self = UnifiAPICall(

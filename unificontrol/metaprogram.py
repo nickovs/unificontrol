@@ -7,6 +7,7 @@
 from inspect import Signature, Parameter
 
 from .exceptions import UnifiAPIError
+from .constants import ReplyFormat
 
 POSITIONAL_ONLY = Parameter.POSITIONAL_ONLY
 POSITIONAL_OR_KEYWORD = Parameter.POSITIONAL_OR_KEYWORD
@@ -32,14 +33,14 @@ class _UnifiAPICall:
                  path_arg_name=None, path_arg_optional=True,
                  json_args=None, json_body_name=None, json_fix=None,
                  rest_command=None, method=None,
-                 need_login=True, reply_meta=False):
+                 need_login=True, reply_format=ReplyFormat.DATA):
         self._endpoint = endpoint
         self._path_arg_name = path_arg_name
         self._json_args = json_args
         self._json_body_name = json_body_name
         self._rest = rest_command
         self._need_login = need_login
-        self._reply_meta = reply_meta
+        self._reply_format = reply_format
         if not isinstance(json_fix, (list, tuple, type(None))):
             json_fix = [json_fix]
         self._fixes = json_fix
@@ -108,7 +109,7 @@ class _UnifiAPICall:
         url = self._build_url(client, path_arg)
         return client._execute(url, self._method, rest_dict,
                                need_login=self._need_login,
-                               reply_meta=self._reply_meta)
+                               reply_format=self._reply_format)
 
 class _UnifiAPICallNoSite(_UnifiAPICall):
     # pylint: disable=too-few-public-methods
