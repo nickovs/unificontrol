@@ -1,5 +1,12 @@
 """Functions and classess used to provide abstract representations of the API calls"""
 
+# Copyright 2018-2021 Nicko van Someren
+#
+# Licensed under the Apache License, Version 2.0 (the "License")
+# See the LICENSE.txt file for details
+
+# SPDX-License-Identifier: Apache-2.0
+
 # This metaclass renames any method of a class that currently have a
 # __name__ attribute of META_RENAME to instead have a function
 # introspection name to match the attribute name
@@ -22,7 +29,13 @@ class MetaNameFixer(type):
             attr = dct[attr_name]
             if getattr(attr, "__name__", None) == META_RENAME:
                 attr.__name__ = attr_name
+                attr.wrapped.__name__ = attr_name
         super(MetaNameFixer, cls).__init__(name, bases, dct)
+
+
+def _value_for_type(value, client):
+    return value[client.server_type] if isinstance(value, dict) else value
+
 
 # These are classes who's instances represent API calls to the Unifi controller
 class _UnifiAPICall:
@@ -45,6 +58,7 @@ class _UnifiAPICall:
             json_fix = [json_fix]
         self._fixes = json_fix
         self.__doc__ = doc
+        self.__name__ = META_RENAME
 
         args = [Parameter('self', POSITIONAL_ONLY)]
         if path_arg_name:
@@ -76,9 +90,7 @@ class _UnifiAPICall:
     def _build_url(self, client, path_arg):
         if not client.site:
             raise UnifiAPIError("No site specified for site-specific call")
-        endpoint=self._endpoint
-        if isinstance(endpoint, dict):
-            endpoint = endpoint[client.server_type]
+        endpoint = _value_for_type(self._endpoint, client)
         return "{api_base}/s/{site}/{endpoint}{path}".format(
             api_base=client.api_base,
             site=client.site,
@@ -93,6 +105,11 @@ class _UnifiAPICall:
         client = bound.arguments["self"]
         path_arg = bound.arguments[self._path_arg_name] if self._path_arg_name else None
         rest_dict = bound.arguments[self._json_body_name] if self._json_body_name else {}
+
+        if isinstance(self._method, dict) and client.server_type not in self._method:
+            raise NotImplementedError("Method {} not implemented on server type {:s}".format(
+                self.__name__, client.server_type.name))
+
         if self._rest:
             rest_dict["cmd"] = self._rest
         if self._json_args:
@@ -107,7 +124,8 @@ class _UnifiAPICall:
             for fix in self._fixes:
                 rest_dict = fix(rest_dict)
         url = self._build_url(client, path_arg)
-        return client._execute(url, self._method, rest_dict,
+        method = _value_for_type(self._method, client)
+        return client._execute(url, method, rest_dict,
                                need_login=self._need_login,
                                reply_format=self._reply_format)
 
@@ -115,9 +133,7 @@ class _UnifiAPICallNoSite(_UnifiAPICall):
     # pylint: disable=too-few-public-methods
     "A representation of a single API call common to all sites"
     def _build_url(self, client, path_arg):
-        endpoint=self._endpoint
-        if isinstance(endpoint, dict):
-            endpoint = endpoint[client.server_type]
+        endpoint = _value_for_type(self._endpoint, client)
 
         if endpoint.startswith('/'):
             url = client.url_base + endpoint
@@ -142,6 +158,7 @@ def _make_wrapper(cls, *args, **kwargs):
     wrapper.__name__ = META_RENAME
     wrapper.__doc__ = instance.__doc__
     wrapper.__signature__ = instance.call_sig
+    wrapper.wrapped = instance
     return wrapper
 
 def UnifiAPICall(*args, **kwargs):

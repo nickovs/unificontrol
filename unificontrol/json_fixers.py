@@ -1,3 +1,10 @@
+# Copyright 2018-2021 Nicko van Someren
+#
+# Licensed under the Apache License, Version 2.0 (the "License")
+# See the LICENSE.txt file for details
+
+# SPDX-License-Identifier: Apache-2.0
+
 """ Functions in the ``unificontrol.json_fixers`` module are fixers to
 fix up JSON objects before posting to the controller. This allows us
 to have cleaner function signatures when the underlying API is a bit

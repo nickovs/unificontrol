@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-
 # pylint: disable=too-many-lines
 
-# Copyright 2018 Nicko van Someren
+# Copyright 2018-2021 Nicko van Someren
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -205,6 +203,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         """
         if self._https_adaptor:
             self._https_adaptor.poolmanager.clear()
+        self._session.cookies.clear()
 
         self._login(username=username if username else self._user,
                     password=password if password else self._password)
@@ -214,6 +213,10 @@ class UnifiClient(metaclass=MetaNameFixer):
         {
             UnifiServerType.CLASSIC: "logout",
             UnifiServerType.UDM: "/api/auth/logout",
+        },
+        method={
+            UnifiServerType.CLASSIC: "GET",
+            UnifiServerType.UDM: "POST",
         },
         need_login=False,
         reply_format=ReplyFormat.RAW,
@@ -878,7 +881,10 @@ class UnifiClient(metaclass=MetaNameFixer):
     stat_status = UnifiAPICallNoSite(
         "Get controller status",
         # Note the leading / since this is at the root level
-        "/status",
+        # This call is not available on the UDM controller
+        {
+            UnifiServerType.CLASSIC: "/status",
+        },
         reply_format=ReplyFormat.META,
         )
 

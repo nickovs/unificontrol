@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright 2018-2021 Nicko van Someren
+#
+# Licensed under the Apache License, Version 2.0 (the "License")
+# See the LICENSE.txt file for details
+
+# SPDX-License-Identifier: Apache-2.0
+
 """Pinned certificate support for the requests library"""
 
 # pylint: disable=invalid-name, import-error
