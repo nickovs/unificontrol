@@ -95,22 +95,19 @@ class UnifiClient(metaclass=MetaNameFixer):
 
         resp = ses.send(ses.prepare_request(request))
 
-        # If we fail with unauthorised and need login then retry just once
-        if resp.status_code == 401 and need_login:
-            try:
-                self.login()
-            except UnifiTransportError:
-                if self._user and self._password:
-                    raise UnifiLoginError("Invalid credentials")
-                else:
-                    raise UnifiLoginError("Need user name and password to log in")
-            resp = ses.send(ses.prepare_request(request))
+        if resp.status_code == 401:
+            raise UnifiLoginError("Invalid credentials")
 
         if resp.ok:
             response = resp.json()
             if 'meta' in response and response['meta']['rc'] != 'ok':
                 raise UnifiAPIError(response['meta']['msg'])
-            return response['data']
+
+            # Login does not return the 'data' property
+            if 'data' in response:
+                return response['data']
+            else:
+                return response
         else:
             raise UnifiTransportError("{}: {}".format(resp.status_code, resp.reason))
 
@@ -138,7 +135,7 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     _login = UnifiAPICallNoSite(
         "raw login command",
-        "login",
+        "auth/login",
         json_args=["username", "password"],
         need_login=False)
 
@@ -152,12 +149,13 @@ class UnifiClient(metaclass=MetaNameFixer):
         The username and password arguments are optional if they were provided
         when the client was created.
         """
-        self._login(username=username if username else self._user,
+        return self._login(username=username if username else self._user,
                     password=password if password else self._password)
 
     logout = UnifiAPICallNoSite(
         "Log out from Unifi controller",
-        "logout",
+        "auth/logout",
+        method="POST",
         need_login=False)
 
     # Functions for dealing with guest and client devices

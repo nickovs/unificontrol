@@ -74,7 +74,7 @@ class _UnifiAPICall:
     def _build_url(self, client, path_arg):
         if not client.site:
             raise UnifiAPIError("No site specified for site-specific call")
-        return "https://{host}:{port}/api/s/{site}/{endpoint}{path}".format(
+        return "https://{host}:{port}/proxy/network/api/s/{site}/{endpoint}{path}".format(
             host=client.host, port=client.port, site=client.site,
             endpoint=self._endpoint,
             path="/" + path_arg if path_arg else "")

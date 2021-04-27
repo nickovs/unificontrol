@@ -12,6 +12,10 @@ import unificontrol
 @click.password_option(help="Password (prompt if not present)", confirmation_prompt=False)
 def unifi_test(host, port, username, password, site):
     c = unificontrol.UnifiClient(host=host, port=port, username=username, password=password, site=site)
+
+    login = c.login()
+    print(json.dumps(login, indent=4))
+
     sysinfo = c.stat_sysinfo()
     print(json.dumps(sysinfo, indent=4))
 
