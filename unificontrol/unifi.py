@@ -69,6 +69,7 @@ class UnifiClient(metaclass=MetaNameFixer):
             Pass ``None`` to use regular certificate verification or the
             constant ``FETCH_CERT`` to use the current certificate of the server
             and pin that cert for future accesses.
+        verify: Set to False to ignore verifying the SSL certificate
     """
 
     def __init__(self, host="localhost", port=8443,
