@@ -69,11 +69,12 @@ class UnifiClient(metaclass=MetaNameFixer):
             Pass ``None`` to use regular certificate verification or the
             constant ``FETCH_CERT`` to use the current certificate of the server
             and pin that cert for future accesses.
+        verify: Set to False to ignore verifying the SSL certificate
     """
 
     def __init__(self, host="localhost", port=8443,
                  username="admin", password=None, site="default",
-                 cert=FETCH_CERT):
+                 cert=FETCH_CERT, verify=True):
         self._host = host
         self._port = port
         self._user = username
@@ -81,6 +82,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         self._site = site
         self._session = requests.session()
         self._exit_handler = None
+        self.verify = verify
 
         if cert == FETCH_CERT:
             cert = ssl.get_server_certificate((host, port))
@@ -93,7 +95,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         request = requests.Request(method, url, json=rest_dict)
         ses = self._session
 
-        resp = ses.send(ses.prepare_request(request))
+        resp = ses.send(ses.prepare_request(request), verify=self.verify)
 
         # If we fail with unauthorised and need login then retry just once
         if resp.status_code == 401 and need_login:
