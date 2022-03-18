@@ -64,6 +64,7 @@ def fix_times_as_ms(json):
         json['start'] = int(json['start'] * 1000)
     if 'end' in json:
         json['end'] = int(json['end'] * 1000)
+    return json
 
 def fix_ensure_time_attrib(json):
     """Ensure that requested attributes include the 'time' attribute"""
@@ -105,12 +106,14 @@ def fix_enforce_values(mapping):
             if key in json and json[key] not in mapping[key]:
                 raise ValueError("value of {} argument must be one of {}".format(
                     key, mapping[key]))
+        return json
     return arg_value_checker
 
 # Choose which REST command to use depending on if we are enabling or disabiling
 def fix_locate_ap_cmd(json):
     json['cmd'] = 'set-locate' if json['enabled'] else 'unset-locate'
     del json['enabled']
+    return json
 
 # Convert function arguments for admin creation into internal representation
 def fix_admin_permissions(json):
