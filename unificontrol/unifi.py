@@ -50,7 +50,7 @@ _DEFAULT_SITE_ATTRIBUTES = ['bytes', 'wan-tx_bytes', 'wan-rx_bytes',
 _DEFAULT_AP_ATTRIBUTES = ['bytes', 'num_sta', 'time']
 _DEFAULT_USER_ATTRIBUTES = ['time', 'rx_bytes', 'tx_bytes']
 
-X_PASSWORD_FIX=fix_arg_names({"password":"x_passowrd"})
+X_PASSWORD_FIX=fix_arg_names({"password":"x_password"})
 
 
 # The main Unifi client object
