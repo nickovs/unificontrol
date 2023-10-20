@@ -830,7 +830,7 @@ class UnifiClient(metaclass=MetaNameFixer):
     list_vouchers = UnifiAPICall(
         "List vouchers",
         "stat/voucher",
-        json_args=['create_time'],
+        json_args=[('create_time', None)],
         )
 
     #### FIX ME: Should add support for 'within' parameter
@@ -855,15 +855,33 @@ class UnifiClient(metaclass=MetaNameFixer):
         )
 
     create_voucher = UnifiAPICall(
-        "Create voucher(s)",
+        """
+        Creates a voucher
+    
+        Args:
+            minutes (int): expiration time in minutes
+            expire_unit (int): 1440 - do not change, number of minutes in a day
+            expire_number (int): 1 - do not change
+            count (int): number of vouchers to create using these specs
+            quota (int): number of uses, 0 is unlimited use
+            up (int): bandwidth limit in mb
+            down (int): bandwidth limit in mb
+            bytes (int): constraint in mb
+        Returns:
+            {'create_time': epoch-time}
+        """,
         "cmd/hotspot",
+        rest_command="create-voucher",
         json_args=['minutes',
+                   ('expire_unit', 1440),
+                   ('expire_number', 1),
                    ('count', 1),
-                   ('quota', 0),
+                   ('quota', 1),
                    ('note', None),
                    ('up', None),
                    ('down', None),
-                   ('MBytes', None)],
+                   ('bytes', None)],
+        json_fix=[fix_arg_names({'minutes': 'expire', 'count': 'n'})],
         )
 
     revoke_voucher = UnifiAPICall(
@@ -871,7 +889,7 @@ class UnifiClient(metaclass=MetaNameFixer):
         "cmd/hotspot",
         rest_command="delete-voucher",
         json_args=['voucher_id'],
-        json_fix=[fix_arg_names({'voucher_id':"_id"})],
+        json_fix=[fix_arg_names({'voucher_id': '_id'})],
         )
 
     extend_guest_validity = UnifiAPICall(
