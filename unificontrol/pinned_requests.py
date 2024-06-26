@@ -82,6 +82,6 @@ class PinningHTTPSAdapter(HTTPAdapter):
 
     def __del__(self):
         """ delete the temporary certificate file if it will not be automatically removed """
-        if (not self._ca_cert_temp.delete and os.path.isfile(self._ca_cert_temp.name)):
+        if (hasattr(self._ca_cert_temp, "delete") and not self._ca_cert_temp.delete and os.path.isfile(self._ca_cert_temp.name)):
             self._ca_cert_temp.close()
             os.unlink(self._ca_cert_temp.name)
