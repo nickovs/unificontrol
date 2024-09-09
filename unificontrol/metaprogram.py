@@ -30,11 +30,13 @@ class _UnifiAPICall:
     "A representation of a single API call in a specific site"
     def __init__(self, doc, endpoint,
                  path_arg_name=None, path_arg_optional=True,
+                 path_arg_in_request_body=False,
                  json_args=None, json_body_name=None, json_fix=None,
                  rest_command=None, method=None,
                  need_login=True):
         self._endpoint = endpoint
         self._path_arg_name = path_arg_name
+        self._path_arg_in_request_body = path_arg_in_request_body
         self._json_args = json_args
         self._json_body_name = json_body_name
         self._rest = rest_command
@@ -86,6 +88,9 @@ class _UnifiAPICall:
         client = bound.arguments["self"]
         path_arg = bound.arguments[self._path_arg_name] if self._path_arg_name else None
         rest_dict = bound.arguments[self._json_body_name] if self._json_body_name else {}
+        if self._path_arg_in_request_body:
+            if self._path_arg_name:
+                rest_dict[self._path_arg_name] = bound.arguments[self._path_arg_name]
         if self._rest:
             rest_dict["cmd"] = self._rest
         if self._json_args:
