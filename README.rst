@@ -1,3 +1,15 @@
+NOTE: This package is no longer supported
+=========================================
+
+The code here was written to support a version of the API for Unifi devices that is substanitally out of date. While some of the functionality
+here still works, it needs a major rewrite in order to be brought up to the current specifications. Since I no longer have a need for this
+code, nor do I have the time to maintain it, I am archiving the repository.
+
+If the code is of use to you please feel free to fork this repo and fix it up to your needs. After all, that's what open source software is
+all about!
+
+
+
 A high-level Python interface to the Unifi controller software
 ==============================================================
 
